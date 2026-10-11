@@ -421,6 +421,17 @@ test('a radio on an unknown band is a ConversionError naming the AP and band', a
   );
 });
 
+test('two floors with the same name are a ConversionError naming it', async () => {
+  await rejectsWith((oi) => { oi.floorplans[1].name = 'Ground'; }, 'two floors are named "Ground"');
+});
+
+test('two wall materials with the same name are a ConversionError naming it', async () => {
+  await rejectsWith(
+    (oi) => { oi.wall_materials.push({ ...oi.wall_materials[0], name: oi.wall_materials[1].name }); },
+    'two wall types are named "[Imported] Brick"',
+  );
+});
+
 test('a radio band named like an Object property is still unsupported', async () => {
   await rejectsWith(
     (oi) => { oi.accesspoints[0].dot11_radios[1].band = 'constructor'; },

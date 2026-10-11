@@ -32,7 +32,11 @@ const wallTypeFrom = (material, newId) => ({
 
 export function buildEsxWalls(oi, floorByName, newId) {
   const wallTypes = oi.wall_materials.map((material) => wallTypeFrom(material, newId));
-  const wallTypeIdByMaterial = new Map(oi.wall_materials.map((m, i) => [m.name, wallTypes[i].id]));
+  const wallTypeIdByMaterial = new Map();
+  oi.wall_materials.forEach((material, i) => {
+    if (wallTypeIdByMaterial.has(material.name)) throw new ConversionError(`two wall types are named "${material.name}"`);
+    wallTypeIdByMaterial.set(material.name, wallTypes[i].id);
+  });
   const wallPoints = [];
   const wallSegments = [];
 
@@ -78,6 +82,7 @@ export function buildEsxFloors(oi, files, newId) {
   const floorByName = new Map();
 
   for (const source of oi.floorplans) {
+    if (floorByName.has(source.name)) throw new ConversionError(`two floors are named "${source.name}"`);
     const pixels = dimensionIn(source, 'pixels');
     if (!pixels) throw new ConversionError(`floor "${source.name}" has no pixel dimensions`);
     const imageId = newId();
