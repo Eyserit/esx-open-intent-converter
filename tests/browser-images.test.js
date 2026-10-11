@@ -38,3 +38,27 @@ test('toPng reports a failed PNG encode as a ConversionError', async () => {
   stubCanvas({ convertToBlob: async () => { throw new Error('encode failed'); } });
   await rejectsAsPngFailure(browserImageTools.toPng(new Uint8Array([1])));
 });
+
+test('resize draws the image onto a canvas of the new size and encodes it as PNG', async () => {
+  const calls = {};
+  globalThis.createImageBitmap = stubBitmap;
+  globalThis.OffscreenCanvas = class {
+    constructor(width, height) {
+      calls.canvas = [width, height];
+    }
+
+    getContext() {
+      return { drawImage: (...args) => { calls.draw = args.slice(1); } };
+    }
+
+    async convertToBlob(options) {
+      calls.type = options.type;
+      return new Blob([new Uint8Array([7, 8, 9])]);
+    }
+  };
+
+  const png = await browserImageTools.resize(new Uint8Array([1]), 8000, 4576);
+
+  assert.deepEqual(calls, { canvas: [8000, 4576], draw: [0, 0, 8000, 4576], type: 'image/png' });
+  assert.deepEqual([...png], [7, 8, 9]);
+});
