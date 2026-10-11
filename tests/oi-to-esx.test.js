@@ -151,6 +151,25 @@ test('a wall type named like an Object property is still not defined', async () 
   );
 });
 
+test('a floor without a wall_segments list has no walls', async () => {
+  const { oi, files } = await loadOi();
+  const { floorByName } = buildEsxFloors(oi, files, counter());
+  delete oi.floorplans[0].wall_segments;
+
+  const { wallSegments } = buildEsxWalls(oi, floorByName, counter());
+
+  assert.equal(wallSegments.length, oi.floorplans[1].wall_segments.length);
+});
+
+test('a design without a wall_materials list has no wall types', async () => {
+  const { oi, files } = await loadOi();
+  const { floorByName } = buildEsxFloors(oi, files, counter());
+  delete oi.wall_materials;
+  for (const floor of oi.floorplans) floor.wall_segments = [];
+
+  assert.deepEqual(buildEsxWalls(oi, floorByName, counter()), { wallTypes: [], wallPoints: [], wallSegments: [] });
+});
+
 test('wall points are flipped back to bottom-up and every segment reference resolves', async () => {
   const { oi, files } = await loadOi();
   const { floorByName } = buildEsxFloors(oi, files, counter());
@@ -419,6 +438,12 @@ test('a radio on an unknown band is a ConversionError naming the AP and band', a
     (oi) => { oi.accesspoints[0].dot11_radios[1].band = 'FREQ_60GHZ'; },
     'AP "AP-A" has an unsupported radio band "FREQ_60GHZ"',
   );
+});
+
+test('a design without an accesspoints list converts with no APs', async () => {
+  const { accessPoints, radios, antennaTypes, notes } = await convertFixture((oi) => { delete oi.accesspoints; });
+
+  assert.deepEqual([accessPoints, radios, antennaTypes, notes], [[], [], [], []]);
 });
 
 test('a radio without a channel is a ConversionError naming the AP', async () => {

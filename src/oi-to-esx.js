@@ -31,9 +31,10 @@ const wallTypeFrom = (material, newId) => ({
 });
 
 export function buildEsxWalls(oi, floorByName, newId) {
-  const wallTypes = oi.wall_materials.map((material) => wallTypeFrom(material, newId));
+  const materials = oi.wall_materials ?? [];
+  const wallTypes = materials.map((material) => wallTypeFrom(material, newId));
   const wallTypeIdByMaterial = new Map();
-  oi.wall_materials.forEach((material, i) => {
+  materials.forEach((material, i) => {
     if (wallTypeIdByMaterial.has(material.name)) throw new ConversionError(`two wall types are named "${material.name}"`);
     wallTypeIdByMaterial.set(material.name, wallTypes[i].id);
   });
@@ -50,7 +51,7 @@ export function buildEsxWalls(oi, floorByName, newId) {
 
   for (const source of oi.floorplans) {
     const floor = floorByName.get(source.name);
-    for (const segment of source.wall_segments) {
+    for (const segment of source.wall_segments ?? []) {
       const wallTypeId = wallTypeIdByMaterial.get(segment.wall_type);
       if (!wallTypeId) throw new ConversionError(`wall type "${segment.wall_type}" is not defined`);
       wallSegments.push({
@@ -182,10 +183,11 @@ function accessPointNotes(aps, genericModels) {
 }
 
 function buildEsxAccessPoints(oi, floorByName, library, newId) {
-  const { antennaTypes, idsByModel, genericModels } = buildAntennaTypes(oi.accesspoints, library, newId);
+  const aps = oi.accesspoints ?? [];
+  const { antennaTypes, idsByModel, genericModels } = buildAntennaTypes(aps, library, newId);
   const accessPoints = [];
   const simulatedRadios = [];
-  for (const ap of oi.accesspoints) {
+  for (const ap of aps) {
     const floor = floorByName.get(ap.floorplan_name);
     if (!floor) throw new ConversionError(`AP "${ap.name}" is on floor "${ap.floorplan_name}", which doesn't exist`);
     const pixels = pixelPosition(ap, floor);
@@ -227,7 +229,7 @@ function buildEsxAccessPoints(oi, floorByName, library, newId) {
       });
     });
   }
-  return { accessPoints, simulatedRadios, antennaTypes, notes: accessPointNotes(oi.accesspoints, genericModels) };
+  return { accessPoints, simulatedRadios, antennaTypes, notes: accessPointNotes(aps, genericModels) };
 }
 
 const encoder = new TextEncoder();
