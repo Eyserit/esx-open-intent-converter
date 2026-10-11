@@ -17,8 +17,12 @@ function isCorner(value) {
   return Number.isFinite(value?.lat) && Number.isFinite(value?.lng);
 }
 
+function isValidField(field, value) {
+  return CORNERS.includes(field) ? isCorner(value) : isNonEmptyString(value);
+}
+
 function firstInvalidField(body, fields) {
-  return fields.find((field) => !(CORNERS.includes(field) ? isCorner : isNonEmptyString)(body?.[field]));
+  return fields.find((field) => !isValidField(field, body?.[field]));
 }
 
 export function createRoutes(client) {
