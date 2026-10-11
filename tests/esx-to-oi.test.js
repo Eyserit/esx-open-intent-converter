@@ -150,3 +150,30 @@ test('esxToOi names the required file that is missing', async () => {
     (err) => err instanceof ConversionError && err.reason === 'missing wallSegments.json',
   );
 });
+
+test('esxToOi reports a required file with corrupt JSON as unreadable', async () => {
+  const entries = await fixtureEntries();
+  entries.set('floorPlans.json', new TextEncoder().encode('{not json'));
+  await assert.rejects(
+    esxToOi(entries, nodeImageTools),
+    (err) => err instanceof ConversionError && err.reason === 'floorPlans.json is unreadable',
+  );
+});
+
+test('esxToOi reports a required file without its top-level list as unreadable', async () => {
+  const entries = await fixtureEntries();
+  entries.set('floorPlans.json', new TextEncoder().encode('{}'));
+  await assert.rejects(
+    esxToOi(entries, nodeImageTools),
+    (err) => err instanceof ConversionError && err.reason === 'floorPlans.json is unreadable',
+  );
+});
+
+test('esxToOi reports a present accessPoints.json without its list as unreadable', async () => {
+  const entries = await fixtureEntries();
+  entries.set('accessPoints.json', new TextEncoder().encode('{}'));
+  await assert.rejects(
+    esxToOi(entries, nodeImageTools),
+    (err) => err instanceof ConversionError && err.reason === 'accessPoints.json is unreadable',
+  );
+});

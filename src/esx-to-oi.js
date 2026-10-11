@@ -213,19 +213,29 @@ export function buildAps(
 
 const decoder = new TextDecoder();
 
-function readRequiredJson(entries, fileName, key) {
+function parseJsonKey(entries, fileName, key) {
+  try {
+    return JSON.parse(decoder.decode(entries.get(fileName)))[key];
+  } catch {
+    throw new ConversionError(`${fileName} is unreadable`);
+  }
+}
+
+function readRequiredList(entries, fileName, key) {
   if (!entries.has(fileName)) throw new ConversionError(`missing ${fileName}`);
-  return JSON.parse(decoder.decode(entries.get(fileName)))[key];
+  const list = parseJsonKey(entries, fileName, key);
+  if (!Array.isArray(list)) throw new ConversionError(`${fileName} is unreadable`);
+  return list;
 }
 
 function readOptionalList(entries, fileName, key) {
-  return entries.has(fileName) ? readRequiredJson(entries, fileName, key) : [];
+  return entries.has(fileName) ? readRequiredList(entries, fileName, key) : [];
 }
 
 // esx2oi.py falls back to "Project" on any project.json problem; this mirrors it.
 function readProjectTitle(entries) {
   try {
-    const project = readRequiredJson(entries, 'project.json', 'project');
+    const project = parseJsonKey(entries, 'project.json', 'project');
     return project.title || project.name || 'Project';
   } catch {
     return 'Project';
@@ -237,10 +247,10 @@ const byId = (items) => Object.fromEntries(items.map((item) => [item.id, item]))
 export async function esxToOi(
   entries, imageTools, { prefix = '[Imported] ', fallbackVendor = 'ubiquiti', fallbackModel = 'uap-ac-pro' } = {},
 ) {
-  const floors = readRequiredJson(entries, 'floorPlans.json', 'floorPlans');
-  const wallSegments = readRequiredJson(entries, 'wallSegments.json', 'wallSegments');
-  const wallPoints = byId(readRequiredJson(entries, 'wallPoints.json', 'wallPoints'));
-  const wallTypes = byId(readRequiredJson(entries, 'wallTypes.json', 'wallTypes'));
+  const floors = readRequiredList(entries, 'floorPlans.json', 'floorPlans');
+  const wallSegments = readRequiredList(entries, 'wallSegments.json', 'wallSegments');
+  const wallPoints = byId(readRequiredList(entries, 'wallPoints.json', 'wallPoints'));
+  const wallTypes = byId(readRequiredList(entries, 'wallTypes.json', 'wallTypes'));
   const esxAps = readOptionalList(entries, 'accessPoints.json', 'accessPoints');
   const metersPerUnit = Object.fromEntries(floors.map((f) => [f.id, Number(f.metersPerUnit || 0)]));
   const projectTitle = readProjectTitle(entries);
