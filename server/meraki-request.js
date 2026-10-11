@@ -58,8 +58,13 @@ export function createRequest({ fetch, sleep }) {
     const { host, label, domain } = REGIONS[region];
     const headers = { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    // A paging URL arrives already checked against the region domain by the caller.
-    let url = path.startsWith('https://') ? path : `https://${host}/api/v1${path}`;
+    let url = `https://${host}/api/v1${path}`;
+    if (path.startsWith('https://')) {
+      // An absolute URL (a paging link) would otherwise carry the key to any host.
+      const absolute = parseUrl(path);
+      if (!absolute || !isWithinDomain(absolute, domain)) throw fail(502, GENERIC_MESSAGE);
+      url = absolute.href;
+    }
     let retries = 0;
     let hops = 0;
     for (;;) {
