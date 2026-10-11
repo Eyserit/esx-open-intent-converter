@@ -245,7 +245,8 @@ function readProjectTitle(entries) {
 const byId = (items) => Object.fromEntries(items.map((item) => [item.id, item]));
 
 export async function esxToOi(
-  entries, imageTools, { prefix = '[Imported] ', fallbackVendor = 'ubiquiti', fallbackModel = 'uap-ac-pro' } = {},
+  entries, imageTools,
+  { prefix = '[Imported] ', fallbackVendor = 'ubiquiti', fallbackModel = 'uap-ac-pro', onProgress = () => {} } = {},
 ) {
   const floors = readRequiredList(entries, 'floorPlans.json', 'floorPlans');
   const wallSegments = readRequiredList(entries, 'wallSegments.json', 'wallSegments');
@@ -256,6 +257,7 @@ export async function esxToOi(
   const projectTitle = readProjectTitle(entries);
 
   const { materials, id2name } = buildWallMaterials(wallTypes, wallSegments, prefix);
+  onProgress({ stage: 'images' });
   const { floorsOut, images, floorImgH } = await buildFloorObjects(
     entries, floors, wallSegments, wallPoints, id2name, sanitizeFilename(projectTitle), metersPerUnit, projectTitle, imageTools,
   );
