@@ -22,6 +22,7 @@ function design(width, height) {
       }],
       accesspoints: [{
         name: 'AP-1',
+        floorplan_name: 'Plan',
         coordinates: [
           { coordinate_xyz: { x: 2000, y: 1000, z: 2.5 / mpp, unit: 'pixels' } },
           { coordinate_xyz: { x: 2000 * mpp, y: 1000 * mpp, z: 2.5, unit: 'meters' } },
@@ -43,4 +44,19 @@ test('a plan wider than 8000 px is shrunk to 8000 px wide, pixel dimensions incl
   assert.deepEqual(await nodeImageTools.size(fitted.images.get(IMAGE)), { width: 8000, height: 4000 });
   const floor = fitted.openintent.floorplans[0];
   assert.deepEqual(pixels(floor), { width: 8000, length: 4000, unit: 'pixels', height: 40 });
+});
+
+test('walls and AP pixel positions shrink with the image; metres and feet stay put', async () => {
+  const { openintent, images } = design(10000, 5000);
+
+  const fitted = await fitImagesForHamina(openintent, images, nodeImageTools);
+
+  const [wall] = fitted.openintent.floorplans[0].wall_segments;
+  assert.deepEqual(wall.start_point, { x: 800, y: 400 });
+  assert.deepEqual(wall.end_point, { x: 7200, y: 3600 });
+  const [px, metres, feet] = fitted.openintent.accesspoints[0].coordinates.map((c) => c.coordinate_xyz);
+  assert.deepEqual(px, { x: 1600, y: 800, z: 40, unit: 'pixels' });
+  assert.deepEqual(metres, openintent.accesspoints[0].coordinates[1].coordinate_xyz);
+  assert.deepEqual(feet, openintent.accesspoints[0].coordinates[2].coordinate_xyz);
+  assert.deepEqual(fitted.openintent.floorplans[0].dimensions.slice(1), openintent.floorplans[0].dimensions.slice(1));
 });
