@@ -1,3 +1,4 @@
+import { findAntenna, genericAntenna } from './antennas.js';
 import { ConversionError } from './errors.js';
 
 const dimensionIn = (floor, unit) => floor.dimensions.find((d) => d.unit === unit);
@@ -99,4 +100,153 @@ export function buildEsxFloors(oi, files, newId) {
     floorByName[source.name] = { id: floorId, mpu, heightPx: pixels.length };
   }
   return { floorPlans, images, imageFiles, floorByName };
+}
+
+const BAND_BY_OI = { 'FREQ_2.4GHZ': 'TWO', FREQ_5GHZ: 'FIVE', FREQ_6GHZ: 'SIX' };
+const ANTENNA_BANDS = ['TWO', 'FIVE', 'SIX'];
+const BASE_MHZ = { TWO: 2407, FIVE: 5000, SIX: 5950 };
+
+// 2.4 GHz channel 14 sits outside the regular 5 MHz spacing.
+const CHANNEL_14_MHZ = 2484;
+
+function centreFrequency(band, channel) {
+  if (band === 'TWO' && channel === 14) return CHANNEL_14_MHZ;
+  return BASE_MHZ[band] + 5 * channel;
+}
+
+function esxBand(ap, radio) {
+  const band = BAND_BY_OI[radio.band];
+  if (!band) throw new ConversionError(`AP "${ap.name}" has an unsupported radio band "${radio.band}"`);
+  return band;
+}
+
+const DEFAULT_ANTENNA_HEIGHT_M = 2.5;
+
+const coordinateIn = (ap, unit) => (ap.coordinates ?? []).find((c) => c.coordinate_xyz.unit === unit)?.coordinate_xyz;
+
+function pixelPosition(ap, floor) {
+  const pixels = coordinateIn(ap, 'pixels');
+  if (pixels) return pixels;
+  const metres = coordinateIn(ap, 'meters');
+  if (metres) return { x: metres.x / floor.mpu, y: metres.y / floor.mpu };
+  const feet = coordinateIn(ap, 'feet');
+  if (!feet) throw new ConversionError(`AP "${ap.name}" has no position`);
+  return { x: feet.x / FEET_PER_METRE / floor.mpu, y: feet.y / FEET_PER_METRE / floor.mpu };
+}
+
+const apVendor = (ap) => ap.manufacturer_original || ap.manufacturer;
+const apModel = (ap) => ap.model_original || ap.model;
+const modelKey = (ap) => JSON.stringify([apVendor(ap), apModel(ap)]);
+const radiosOf = (ap) => ap.dot11_radios ?? [];
+const hasRadios = (ap) => radiosOf(ap).length > 0;
+
+function buildAntennaTypes(aps, library, newId) {
+  const idsByModel = new Map();
+  const genericModels = new Set();
+  const antennaTypes = [];
+  for (const ap of aps.filter(hasRadios)) {
+    if (idsByModel.has(modelKey(ap))) continue;
+    const ids = {};
+    for (const band of ANTENNA_BANDS) {
+      let entry = findAntenna(library, apVendor(ap), apModel(ap), band);
+      if (!entry) {
+        entry = genericAntenna(apVendor(ap), apModel(ap), band);
+        genericModels.add(modelKey(ap));
+      }
+      ids[band] = newId();
+      antennaTypes.push({ ...entry, id: ids[band], status: 'CREATED' });
+    }
+    idsByModel.set(modelKey(ap), ids);
+  }
+  return { antennaTypes, idsByModel, genericModels };
+}
+
+const countOfAps = (n) => (n === 1 ? '1 AP' : `${n} APs`);
+
+function accessPointNotes(aps, genericModels) {
+  const genericCount = aps.filter((ap) => hasRadios(ap) && genericModels.has(modelKey(ap))).length;
+  const noRadioCount = aps.filter((ap) => !hasRadios(ap)).length;
+  const notes = [];
+  if (genericCount > 0) notes.push(`${countOfAps(genericCount)} used a generic antenna (model not in library)`);
+  if (noRadioCount > 0) {
+    const verb = noRadioCount === 1 ? 'has' : 'have';
+    notes.push(`${countOfAps(noRadioCount)} ${verb} no radios and won't appear in Ekahau`);
+  }
+  return notes;
+}
+
+function buildEsxAccessPoints(oi, floorByName, library, newId) {
+  const { antennaTypes, idsByModel, genericModels } = buildAntennaTypes(oi.accesspoints, library, newId);
+  const accessPoints = [];
+  const simulatedRadios = [];
+  for (const ap of oi.accesspoints) {
+    const floor = floorByName[ap.floorplan_name];
+    if (!floor) throw new ConversionError(`AP "${ap.name}" is on floor "${ap.floorplan_name}", which doesn't exist`);
+    const pixels = pixelPosition(ap, floor);
+    const antennaHeight = coordinateIn(ap, 'meters')?.z ?? DEFAULT_ANTENNA_HEIGHT_M;
+    const id = newId();
+    accessPoints.push({
+      location: { floorPlanId: floor.id, coord: { x: pixels.x, y: floor.heightPx - pixels.y } },
+      name: ap.name, mine: true, hidden: false, userDefinedPosition: false, noteIds: [],
+      vendor: apVendor(ap), model: apModel(ap), tags: [], id, status: 'CREATED',
+    });
+    const antennaIds = idsByModel.get(modelKey(ap));
+    radiosOf(ap).forEach((radio, index) => {
+      const band = esxBand(ap, radio);
+      simulatedRadios.push({
+        accessPointId: id,
+        accessPointIndex: index,
+        transmitPower: radio.transmit_power,
+        channelByCenterFrequencyDefinedNarrowChannels: [centreFrequency(band, radio.channel)],
+        antennaDirection: 0.0,
+        antennaTilt: 0.0,
+        antennaHeight,
+        antennaMounting: 'CEILING',
+        technology: 'AX',
+        radioTechnology: 'IEEE802_11',
+        spatialStreamCount: radio.mimo_chains ?? 2,
+        shortGuardInterval: true,
+        greenfield: false,
+        enabled: true,
+        id: newId(),
+        status: 'CREATED',
+        antennaTypeId: antennaIds[band],
+        defaultAntennas: ANTENNA_BANDS.map((band) => ({
+          radioTechnology: 'IEEE802_11', frequencyBand: band, antennaTypeId: antennaIds[band],
+        })),
+      });
+    });
+  }
+  return { accessPoints, simulatedRadios, antennaTypes, notes: accessPointNotes(oi.accesspoints, genericModels) };
+}
+
+const encoder = new TextEncoder();
+const jsonFile = (key, value) => encoder.encode(JSON.stringify({ [key]: value }));
+
+function buildProject(oi, fallbackName, newId) {
+  const name = oi.floorplans[0]?.project_name || fallbackName;
+  return {
+    schemaVersion: '1.9.0', name, title: name, customer: '', location: '', responsiblePerson: '',
+    noteIds: [], tags: [], id: newId(), status: 'CREATED',
+  };
+}
+
+export function oiToEsx(oi, files, library, fallbackName, newId = () => crypto.randomUUID()) {
+  const { floorPlans, images, imageFiles, floorByName } = buildEsxFloors(oi, files, newId);
+  const { wallTypes, wallPoints, wallSegments } = buildEsxWalls(oi, floorByName, newId);
+  const { accessPoints, simulatedRadios, antennaTypes, notes } = buildEsxAccessPoints(oi, floorByName, library, newId);
+  const esxFiles = new Map([
+    ['version', encoder.encode('2.0')],
+    ['project.json', jsonFile('project', buildProject(oi, fallbackName, newId))],
+    ['floorPlans.json', jsonFile('floorPlans', floorPlans)],
+    ['images.json', jsonFile('images', images)],
+    ...imageFiles,
+    ['wallTypes.json', jsonFile('wallTypes', wallTypes)],
+    ['wallPoints.json', jsonFile('wallPoints', wallPoints)],
+    ['wallSegments.json', jsonFile('wallSegments', wallSegments)],
+    ['accessPoints.json', jsonFile('accessPoints', accessPoints)],
+    ['simulatedRadios.json', jsonFile('simulatedRadios', simulatedRadios)],
+    ['antennaTypes.json', jsonFile('antennaTypes', antennaTypes)],
+  ]);
+  return { files: esxFiles, notes };
 }
