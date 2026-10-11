@@ -5,6 +5,8 @@ import { fitImagesForHamina } from './fit-image.js';
 import { oiToEsx } from './oi-to-esx.js';
 import { NotSupportedError } from './errors.js';
 
+export const MAX_FILE_BYTES = 100 * 1024 * 1024;
+
 const encoder = new TextEncoder();
 
 // Only the last extension goes: "site.v2.esx" keeps its ".v2".
@@ -28,6 +30,7 @@ async function convertEsx(entries, fileName, { imageTools, report }) {
     outputName: `${baseName(fileName)}.zip`,
     bytes: await writeZip(zipEntries),
     notes: [],
+    openintent: { design: openintent, images: new Map(images) },
   };
 }
 
@@ -43,6 +46,7 @@ async function convertOpenIntent(entries, fileName, { library, report }) {
     outputName: `${baseName(fileName)}.esx`,
     bytes: await writeZip([...files]),
     notes,
+    openintent: { design, images: entries },
   };
 }
 

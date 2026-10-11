@@ -36,6 +36,8 @@ export function cardFor(event) {
       return withDetail({ state: 'done', title: event.outputName }, event.notes.join(' · '));
     case 'multiple':
       return { state: 'unsupported', title: 'Drop one file at a time.' };
+    case 'too-large':
+      return { state: 'unsupported', title: 'This file is over 100 MB.' };
     case 'error':
       return { state: 'unsupported', title: errorTitle(event.error, event.format) };
   }

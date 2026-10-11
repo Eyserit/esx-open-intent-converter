@@ -1,5 +1,5 @@
 // DOM wiring only: the copy comes from cardFor() and the work from convert().
-import { convert } from './src/convert.js';
+import { convert, MAX_FILE_BYTES } from './src/convert.js';
 import { cardFor } from './src/messages.js';
 import { browserImageTools } from './src/browser-images.js';
 import { ConversionError, NotSupportedError } from './src/errors.js';
@@ -113,6 +113,7 @@ function handleFiles(files) {
   if (busy) return;
   if (files.length === 0) return render(currentEvent);
   if (files.length > 1) return show({ type: 'multiple' });
+  if (files[0].size > MAX_FILE_BYTES) return show({ type: 'too-large' });
   convertFile(files[0]);
 }
 

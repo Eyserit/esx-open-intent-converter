@@ -73,3 +73,7 @@ test('idle invites a drop and names both accepted formats', () => {
 test('dragging a file over the page says release to convert', () => {
   assert.deepEqual(cardFor({ type: 'dragging' }), { state: 'dragging', title: 'Release to convert' });
 });
+
+test('a file over the cap gets the too-large card', () => {
+  assert.deepEqual(cardFor({ type: 'too-large' }), { state: 'unsupported', title: 'This file is over 100 MB.' });
+});

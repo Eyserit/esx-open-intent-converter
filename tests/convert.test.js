@@ -120,3 +120,14 @@ test('an .esx whose plan is wider than 8000 px comes out at 8000 px for Hamina',
     assert.deepEqual([pixels.width, pixels.length], [8000, 6000], floor.name);
   }
 });
+
+test('both directions hand back the Open Intent design and its images', async () => {
+  const esxResult = await convert(fixtureBytes, 'a.esx', options);
+  assert.equal(esxResult.openintent.design.floorplans[0].name, 'Ground');
+  const path = esxResult.openintent.design.floorplans[0].map_uri.replace('file://', '');
+  assert.ok(esxResult.openintent.images.get(path) instanceof Uint8Array);
+
+  const oiResult = await convert(esxResult.bytes, 'a.zip', options);
+  assert.equal(oiResult.openintent.design.floorplans[0].name, 'Ground');
+  assert.ok(oiResult.openintent.images.get(path) instanceof Uint8Array);
+});
