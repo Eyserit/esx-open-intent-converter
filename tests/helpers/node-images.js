@@ -23,6 +23,11 @@ export const nodeImageTools = {
     if (!isPng(bytes)) throw new Error('not a PNG');
     return bytes;
   },
+  // No real resampling in Node: a header at the new size is all the tests can observe.
+  async resize(bytes, width, height) {
+    if (!isPng(bytes)) throw new Error('not a PNG');
+    return pngHeader(width, height);
+  },
 };
 
 export function recordingImageTools(inner) {
