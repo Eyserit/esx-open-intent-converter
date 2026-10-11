@@ -119,7 +119,7 @@ export async function measureImages(entries, imageTools) {
 }
 
 // The closest size wins (either orientation); the first wins a tie, as in esx2oi.py.
-export async function chooseBestImage(entries, sizes, targetW, targetH, imageTools) {
+function closestInSize(sizes, targetW, targetH) {
   let best = null;
   let bestScore = 1e18;
   for (const [name, [w, h]] of sizes) {
@@ -129,6 +129,14 @@ export async function chooseBestImage(entries, sizes, targetW, targetH, imageToo
       bestScore = sc;
     }
   }
+  return best;
+}
+
+// Unlike esx2oi.py, a floor's own image-<imageId> comes first when it decodes, so
+// same-size floors don't all get the first image; otherwise esx2oi's heuristic applies.
+export async function chooseBestImage(entries, sizes, targetW, targetH, imageTools, imageId) {
+  const ownImage = `image-${imageId}`;
+  const best = imageId != null && sizes.has(ownImage) ? ownImage : closestInSize(sizes, targetW, targetH);
   if (best === null) throw new ConversionError('has no floor image');
   return { size: sizes.get(best), png: await imageTools.toPng(entries.get(best)) };
 }
@@ -150,7 +158,7 @@ export async function buildFloorObjects(
     const name = f.name || 'Floor';
     const targetW = roundHalfEven(f.width || f.cropMaxX || 0);
     const targetH = roundHalfEven(f.height || f.cropMaxY || 0);
-    const { size: [w, h], png } = await chooseBestImage(entries, sizes, targetW, targetH, imageTools);
+    const { size: [w, h], png } = await chooseBestImage(entries, sizes, targetW, targetH, imageTools, f.imageId);
     const imageRel = `images/${projPrefix}_${sanitizeFilename(name)}.png`;
 
     const dims = [{ width: w, length: h, unit: 'pixels', height: h }];

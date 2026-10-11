@@ -184,3 +184,19 @@ test('esxToOi decodes each candidate image once, not once per floor', async () =
   await esxToOi(await fixtureEntries(), tools);
   assert.equal(sizeCalls.length, 2);
 });
+
+// Same-size PNG headers that differ only in a trailing marker byte
+const markedPng = (marker) => Uint8Array.of(...pngHeader(400, 300), marker);
+
+test("two same-size floors each get their own image when the floor's imageId names it", async () => {
+  const entries = await fixtureEntries();
+  const floors = esxJson(entries, 'floorPlans').map((f) => ({ ...f, width: 400.0, height: 300.0 }));
+  entries.set('floorPlans.json', new TextEncoder().encode(JSON.stringify({ floorPlans: floors })));
+  entries.set('image-g', markedPng(1));
+  entries.set('image-f', markedPng(2));
+
+  const { openintent, images } = await esxToOi(entries, nodeImageTools);
+
+  const imageOf = (floor) => images.get(floor.map_uri.replace('file://', ''));
+  assert.deepEqual(openintent.floorplans.map((f) => imageOf(f).at(-1)), [1, 2]);
+});
