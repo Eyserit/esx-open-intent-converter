@@ -52,13 +52,14 @@ async function errorText(res) {
 }
 
 export function createRequest({ fetch, sleep }) {
-  return async function request({ region, apiKey }, method, path, body) {
+  return async function request({ region, apiKey, forbiddenMeansBadKey }, method, path, body) {
     const fail = (status, message) => new MerakiError(status, redact(message, apiKey));
     if (!Object.hasOwn(REGIONS, region)) throw fail(400, 'Unknown Meraki region.');
     const { host, label, domain } = REGIONS[region];
     const headers = { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
-    let url = `https://${host}/api/v1${path}`;
+    // A paging URL arrives already checked against the region domain by the caller.
+    let url = path.startsWith('https://') ? path : `https://${host}/api/v1${path}`;
     let retries = 0;
     let hops = 0;
     for (;;) {
@@ -92,7 +93,8 @@ export function createRequest({ fetch, sleep }) {
         await sleep(retryDelayMs(res.headers.get('Retry-After')));
         continue;
       }
-      if (res.status === 401) throw fail(401, `That API key wasn't accepted by Meraki (${label}).`);
+      // Listing organisations is the first call with a new key, so 403 there means the key is no good.
+      if (res.status === 401 || (res.status === 403 && forbiddenMeansBadKey)) throw fail(401, `That API key wasn't accepted by Meraki (${label}).`);
       if (res.status >= 500) throw fail(502, GENERIC_MESSAGE);
       if (res.status >= 400) throw fail(502, (await errorText(res)) || GENERIC_MESSAGE);
       let json;
