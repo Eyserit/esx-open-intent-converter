@@ -1,6 +1,7 @@
 import { readZip, writeZip } from './zip.js';
 import { detectFormat, findOpenIntentDesign } from './detect.js';
 import { esxToOi } from './esx-to-oi.js';
+import { fitImagesForHamina } from './fit-image.js';
 import { oiToEsx } from './oi-to-esx.js';
 import { NotSupportedError } from './errors.js';
 
@@ -14,7 +15,8 @@ function baseName(fileName) {
 
 // Python's write_oi_zip order: images/ directory, each image, then the compact design JSON.
 async function convertEsx(entries, fileName, { imageTools, report }) {
-  const { openintent, images } = await esxToOi(entries, imageTools, { onProgress: report });
+  const converted = await esxToOi(entries, imageTools, { onProgress: report });
+  const { openintent, images } = await fitImagesForHamina(converted.openintent, converted.images, imageTools);
   report({ stage: 'writing' });
   const zipEntries = [
     ['images/', new Uint8Array(0)],

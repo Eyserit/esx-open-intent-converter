@@ -6,7 +6,7 @@ import { NotSupportedError } from '../src/errors.js';
 import { detectFormat } from '../src/detect.js';
 import { readZip, writeZip } from '../src/zip.js';
 import { assertSameDesign, readOpenIntentZip } from './helpers/compare-oi.js';
-import { nodeImageTools } from './helpers/node-images.js';
+import { nodeImageTools, pngHeader } from './helpers/node-images.js';
 
 const library = JSON.parse(readFileSync(new URL('../src/antenna-library.json', import.meta.url), 'utf8'));
 const fixtureBytes = new Uint8Array(readFileSync(new URL('./fixtures/fixture.esx', import.meta.url)));
@@ -98,4 +98,25 @@ test('an .esx converts even when the library failed to load', async () => {
 test('a zip that is neither format is not supported', async () => {
   const unrelated = await writeZip([['readme.txt', new TextEncoder().encode('hello')]]);
   await assert.rejects(convert(unrelated, 'x.zip', options), NotSupportedError);
+});
+
+test('an .esx whose plan is wider than 8000 px comes out at 8000 px for Hamina', async () => {
+  const entries = await readZip(fixtureBytes);
+  const floors = JSON.parse(new TextDecoder().decode(entries.get('floorPlans.json'))).floorPlans
+    .map((floor) => ({ ...floor, width: 10000.0, height: 7500.0 }));
+  entries.set('floorPlans.json', new TextEncoder().encode(JSON.stringify({ floorPlans: floors })));
+  for (const name of [...entries.keys()].filter((n) => n.startsWith('image-'))) {
+    entries.set(name, pngHeader(10000, 7500));
+  }
+
+  const { bytes } = await convert(await writeZip([...entries]), 'big.esx', options);
+
+  const { design, images } = await readOpenIntentZip(bytes);
+  for (const [name, png] of images) {
+    assert.deepEqual(await nodeImageTools.size(png), { width: 8000, height: 6000 }, name);
+  }
+  for (const floor of design.floorplans) {
+    const pixels = floor.dimensions.find((d) => d.unit === 'pixels');
+    assert.deepEqual([pixels.width, pixels.length], [8000, 6000], floor.name);
+  }
 });
