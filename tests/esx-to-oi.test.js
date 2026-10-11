@@ -116,7 +116,7 @@ test('chooseBestImage skips undecodable images and fails when none is left', asy
   const entries = new Map([['image-x', new Uint8Array([1, 2, 3])], ['notes.txt', new Uint8Array()]]);
   await assert.rejects(
     chooseBestImage(entries, await measureImages(entries, nodeImageTools), 400, 300, nodeImageTools),
-    (err) => err instanceof ConversionError && err.reason === 'has no floor image',
+    (err) => err instanceof ConversionError && err.reason === 'the design has no readable floor image',
   );
 });
 

@@ -137,7 +137,7 @@ function closestInSize(sizes, targetW, targetH) {
 export async function chooseBestImage(entries, sizes, targetW, targetH, imageTools, imageId) {
   const ownImage = `image-${imageId}`;
   const best = imageId != null && sizes.has(ownImage) ? ownImage : closestInSize(sizes, targetW, targetH);
-  if (best === null) throw new ConversionError('has no floor image');
+  if (best === null) throw new ConversionError('the design has no readable floor image');
   return { size: sizes.get(best), png: await imageTools.toPng(entries.get(best)) };
 }
 
