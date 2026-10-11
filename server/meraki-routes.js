@@ -1,0 +1,43 @@
+import { GENERIC_MESSAGE, MerakiError } from './meraki-request.js';
+
+const CORNERS =['topLeftCorner', 'topRightCorner'];
+
+const CREDENTIALS = ['region', 'apiKey'];
+
+function isNonEmptyString(value) {
+  return typeof value === 'string' && value !== '';
+}
+
+function isCorner(value) {
+  return Number.isFinite(value?.lat) && Number.isFinite(value?.lng);
+}
+
+function firstInvalidField(body, fields) {
+  return fields.find((field) => !(CORNERS.includes(field) ? isCorner : isNonEmptyString)(body?.[field]));
+}
+
+export function createRoutes(client) {
+  function route(fields, call) {
+    return async (body) => {
+      const invalid = firstInvalidField(body, [...CREDENTIALS, ...fields]);
+      if (invalid) return { status: 400, json: { error: `Missing or invalid ${invalid}.` } };
+      try {
+        return { status: 200, json: await call(body) };
+      } catch (error) {
+        if (error instanceof MerakiError) return { status: error.status, json: { error: error.message } };
+        // Unknown errors may carry the API key, so their text never reaches the browser.
+        return { status: 500, json: { error: GENERIC_MESSAGE } };
+      }
+    };
+  }
+
+  return new Map([
+    ['/api/organizations', route([], (body) => client.listOrganizations(body))],
+    ['/api/networks', route(['organizationId'], (body) => client.listWirelessNetworks(body))],
+    ['/api/floor-plans', route(['networkId'], (body) => client.listFloorPlans(body))],
+    [
+      '/api/floor-plans/upload',
+      route(['networkId', 'name', 'imageContents', ...CORNERS], (body) => client.uploadFloorPlan(body)),
+    ],
+  ]);
+}
