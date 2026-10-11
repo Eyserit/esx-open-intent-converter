@@ -75,6 +75,36 @@ test('a floor with no pixels dimension is a ConversionError naming the floor', a
   );
 });
 
+test('a floor without a dimensions list is a ConversionError naming the floor', async () => {
+  const { oi, files } = await loadOi();
+  delete oi.floorplans[0].dimensions;
+
+  assert.throws(
+    () => buildEsxFloors(oi, files, counter()),
+    (err) => err instanceof ConversionError && err.reason === 'floor "Ground" has no pixel dimensions',
+  );
+});
+
+test('a floor whose pixel width is zero is a ConversionError naming the floor', async () => {
+  const { oi, files } = await loadOi();
+  oi.floorplans[0].dimensions.find((d) => d.unit === 'pixels').width = 0;
+
+  assert.throws(
+    () => buildEsxFloors(oi, files, counter()),
+    (err) => err instanceof ConversionError && err.reason === 'floor "Ground" has no pixel width',
+  );
+});
+
+test('a floor without a map_uri is a ConversionError naming the floor', async () => {
+  const { oi, files } = await loadOi();
+  delete oi.floorplans[0].map_uri;
+
+  assert.throws(
+    () => buildEsxFloors(oi, files, counter()),
+    (err) => err instanceof ConversionError && err.reason === 'floor "Ground" has no floor image',
+  );
+});
+
 test('a floor with neither metres nor feet is a ConversionError naming the floor', async () => {
   const { oi, files } = await loadOi();
   oi.floorplans[0].dimensions = oi.floorplans[0].dimensions.filter((d) => d.unit === 'pixels');
@@ -149,6 +179,25 @@ test('a wall type named like an Object property is still not defined', async () 
     () => buildEsxWalls(oi, floorByName, counter()),
     (err) => err instanceof ConversionError && err.reason === 'wall type "toString" is not defined',
   );
+});
+
+const wallPointRejected = async (edit) => {
+  const { oi, files } = await loadOi();
+  const { floorByName } = buildEsxFloors(oi, files, counter());
+  edit(oi.floorplans[1].wall_segments[0]);
+
+  assert.throws(
+    () => buildEsxWalls(oi, floorByName, counter()),
+    (err) => err instanceof ConversionError && err.reason === 'floor "First floor" has a wall without a start and end point',
+  );
+};
+
+test('a wall with a null start_point is a ConversionError naming the floor', async () => {
+  await wallPointRejected((segment) => { segment.start_point = null; });
+});
+
+test('a wall without an end_point is a ConversionError naming the floor', async () => {
+  await wallPointRejected((segment) => { delete segment.end_point; });
 });
 
 test('a floor without a wall_segments list has no walls', async () => {

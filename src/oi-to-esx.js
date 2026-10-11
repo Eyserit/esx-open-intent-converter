@@ -1,7 +1,7 @@
 import { findAntenna, genericAntenna } from './antennas.js';
 import { ConversionError } from './errors.js';
 
-const dimensionIn = (floor, unit) => floor.dimensions.find((d) => d.unit === unit);
+const dimensionIn = (floor, unit) => (floor.dimensions ?? []).find((d) => d.unit === unit);
 
 const startsWith = (bytes, magic) => magic.every((b, i) => bytes[i] === b);
 
@@ -54,6 +54,9 @@ export function buildEsxWalls(oi, floorByName, newId) {
     for (const segment of source.wall_segments ?? []) {
       const wallTypeId = wallTypeIdByMaterial.get(segment.wall_type);
       if (!wallTypeId) throw new ConversionError(`wall type "${segment.wall_type}" is not defined`);
+      if (segment.start_point == null || segment.end_point == null) {
+        throw new ConversionError(`floor "${source.name}" has a wall without a start and end point`);
+      }
       wallSegments.push({
         wallPoints: [addPoint(floor, segment.start_point), addPoint(floor, segment.end_point)],
         wallTypeId,
@@ -87,10 +90,13 @@ export function buildEsxFloors(oi, files, newId) {
     if (floorByName.has(source.name)) throw new ConversionError(`two floors are named "${source.name}"`);
     const pixels = dimensionIn(source, 'pixels');
     if (!pixels) throw new ConversionError(`floor "${source.name}" has no pixel dimensions`);
+    // The scale divides by it.
+    if (!(pixels.width > 0)) throw new ConversionError(`floor "${source.name}" has no pixel width`);
     const imageId = newId();
     const floorId = newId();
     const mpu = metresPerPixel(source, pixels);
 
+    if (typeof source.map_uri !== 'string') throw new ConversionError(`floor "${source.name}" has no floor image`);
     const imagePath = source.map_uri.replace('file://', '');
     const imageBytes = files.get(imagePath);
     if (!imageBytes) throw new ConversionError(`the floor image "${imagePath}" is missing from the Open Intent file`);
