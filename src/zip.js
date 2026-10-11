@@ -139,3 +139,86 @@ export async function readZip(bytes) {
   }
   return files;
 }
+
+const FLAG_UTF8_NAME = 0x0800;
+const VERSION_NEEDED = 20;
+const DOS_DATE_1980_01_01 = 0x0021;
+const DOS_TIME_MIDNIGHT = 0;
+const DOS_DIRECTORY_ATTRIBUTE = 0x10;
+
+async function deflate(data) {
+  const stream = new Blob([data]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function prepareEntry([name, data]) {
+  const isDirectory = name.endsWith('/');
+  const stored = isDirectory ? new Uint8Array(0) : await deflate(data);
+  return {
+    name: new TextEncoder().encode(name),
+    isDirectory,
+    method: isDirectory ? METHOD_STORED : METHOD_DEFLATE,
+    crc32: crc32(isDirectory ? stored : data),
+    uncompressedSize: isDirectory ? 0 : data.length,
+    stored,
+  };
+}
+
+function writeLocalHeader(view, at, entry) {
+  view.setUint32(at, LOCAL_SIGNATURE, true);
+  view.setUint16(at + 4, VERSION_NEEDED, true);
+  view.setUint16(at + 6, FLAG_UTF8_NAME, true);
+  view.setUint16(at + 8, entry.method, true);
+  view.setUint16(at + 10, DOS_TIME_MIDNIGHT, true);
+  view.setUint16(at + 12, DOS_DATE_1980_01_01, true);
+  view.setUint32(at + 14, entry.crc32, true);
+  view.setUint32(at + 18, entry.stored.length, true);
+  view.setUint32(at + 22, entry.uncompressedSize, true);
+  view.setUint16(at + 26, entry.name.length, true);
+}
+
+function writeCentralHeader(view, at, entry, localOffset) {
+  view.setUint32(at, CENTRAL_SIGNATURE, true);
+  view.setUint16(at + 4, VERSION_NEEDED, true);
+  view.setUint16(at + 6, VERSION_NEEDED, true);
+  view.setUint16(at + 8, FLAG_UTF8_NAME, true);
+  view.setUint16(at + 10, entry.method, true);
+  view.setUint16(at + 12, DOS_TIME_MIDNIGHT, true);
+  view.setUint16(at + 14, DOS_DATE_1980_01_01, true);
+  view.setUint32(at + 16, entry.crc32, true);
+  view.setUint32(at + 20, entry.stored.length, true);
+  view.setUint32(at + 24, entry.uncompressedSize, true);
+  view.setUint16(at + 28, entry.name.length, true);
+  view.setUint32(at + 38, entry.isDirectory ? DOS_DIRECTORY_ATTRIBUTE : 0, true);
+  view.setUint32(at + 42, localOffset, true);
+}
+
+export async function writeZip(entries) {
+  const prepared = await Promise.all(entries.map(prepareEntry));
+  const localSize = prepared.reduce((sum, e) => sum + LOCAL_HEADER_SIZE + e.name.length + e.stored.length, 0);
+  const centralSize = prepared.reduce((sum, e) => sum + CENTRAL_HEADER_SIZE + e.name.length, 0);
+  const total = localSize + centralSize + EOCD_MIN_SIZE;
+  // Zip64 isn't written, so refuse to emit offsets or counts that would silently wrap.
+  if (total >= MAX_UINT32 || prepared.length >= MAX_UINT16) throw new ConversionError(ZIP64_UNSUPPORTED);
+
+  const out = new Uint8Array(total);
+  const view = new DataView(out.buffer);
+  let localAt = 0;
+  let centralAt = localSize;
+  for (const entry of prepared) {
+    writeLocalHeader(view, localAt, entry);
+    out.set(entry.name, localAt + LOCAL_HEADER_SIZE);
+    out.set(entry.stored, localAt + LOCAL_HEADER_SIZE + entry.name.length);
+    writeCentralHeader(view, centralAt, entry, localAt);
+    out.set(entry.name, centralAt + CENTRAL_HEADER_SIZE);
+    localAt += LOCAL_HEADER_SIZE + entry.name.length + entry.stored.length;
+    centralAt += CENTRAL_HEADER_SIZE + entry.name.length;
+  }
+  const eocd = localSize + centralSize;
+  view.setUint32(eocd, EOCD_SIGNATURE, true);
+  view.setUint16(eocd + 8, prepared.length, true);
+  view.setUint16(eocd + 10, prepared.length, true);
+  view.setUint32(eocd + 12, centralSize, true);
+  view.setUint32(eocd + 16, localSize, true);
+  return out;
+}

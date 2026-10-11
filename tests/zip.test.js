@@ -1,8 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { ConversionError, NotSupportedError } from '../src/errors.js';
-import { readZip } from '../src/zip.js';
+import { readZip, writeZip } from '../src/zip.js';
 
 const fixture = (name) => new Uint8Array(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)));
 const text = (bytes) => new TextDecoder().decode(bytes);
@@ -88,4 +91,63 @@ test('rejects a CRC mismatch', async () => {
   const dataStart = Buffer.from(bytes).indexOf('hello');
   bytes[dataStart] ^= 0xff;
   await rejectsWithReason(readZip(bytes), /corrupt/);
+});
+
+const pseudoRandomBytes = (length) => {
+  const bytes = new Uint8Array(length);
+  let state = 12345;
+  for (let i = 0; i < length; i++) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    bytes[i] = state >>> 24;
+  }
+  return bytes;
+};
+
+const sampleEntries = () => [
+  ['Automação/ü.json', new TextEncoder().encode('{"x":1}')],
+  ['empty.txt', new Uint8Array(0)],
+  ['images/', new Uint8Array(0)],
+  ['big.bin', pseudoRandomBytes(1024 * 1024)],
+];
+
+test('round-trips entries through readZip', async () => {
+  const entries = sampleEntries();
+  const files = await readZip(await writeZip(entries));
+  assert.deepEqual([...files.keys()], ['Automação/ü.json', 'empty.txt', 'big.bin']);
+  for (const [name, data] of entries.filter(([n]) => !n.endsWith('/'))) {
+    assert.deepEqual(files.get(name), data);
+  }
+});
+
+test('sets the UTF-8 flag on every central directory entry', async () => {
+  const bytes = await writeZip(sampleEntries());
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const eocd = bytes.length - 22;
+  const count = view.getUint16(eocd + 10, true);
+  assert.equal(count, 4);
+  let pos = view.getUint32(eocd + 16, true);
+  for (let i = 0; i < count; i++) {
+    assert.equal(view.getUint16(pos + 8, true) & 0x0800, 0x0800);
+    pos += 46 + view.getUint16(pos + 28, true) + view.getUint16(pos + 30, true) + view.getUint16(pos + 32, true);
+  }
+});
+
+test('is deterministic', async () => {
+  assert.deepEqual(await writeZip(sampleEntries()), await writeZip(sampleEntries()));
+});
+
+test('Python can read it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'zip-writer-'));
+  const path = join(dir, 'out.zip');
+  try {
+    writeFileSync(path, await writeZip(sampleEntries()));
+    const result = spawnSync(
+      'python3',
+      ['-I', '-c', 'import zipfile,sys; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None', path],
+      { encoding: 'utf8' },
+    );
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
