@@ -5,3 +5,6 @@ probe-throwaway/
 
 .venv/
 .DS_Store
+
+.claude/worktrees/
+.superpowers/
