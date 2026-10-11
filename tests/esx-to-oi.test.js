@@ -8,7 +8,7 @@ import {
 import { ConversionError } from '../src/errors.js';
 import { readZip } from '../src/zip.js';
 import { sortMaterials } from './helpers/compare-oi.js';
-import { nodeImageTools, recordingImageTools } from './helpers/node-images.js';
+import { nodeImageTools, pngHeader, recordingImageTools } from './helpers/node-images.js';
 
 const fixtureBytes = (name) => new Uint8Array(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)));
 const fixtureEntries = () => readZip(fixtureBytes('fixture.esx'));
@@ -94,16 +94,6 @@ test('JPEG goes through toPng', async () => {
   assert.deepEqual(size, [400, 300]);
   assert.equal(png, convertedPng);
 });
-
-// Just enough of a PNG (signature + IHDR size fields) for nodeImageTools.size
-function pngHeader(width, height) {
-  const bytes = new Uint8Array(24);
-  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
-  const view = new DataView(bytes.buffer);
-  view.setUint32(16, width);
-  view.setUint32(20, height);
-  return bytes;
-}
 
 test('buildFloorObjects rounds a half-pixel floor size to even, as Python round does', async () => {
   const entries = new Map([['image-a', pngHeader(400, 300)], ['image-b', pngHeader(401, 301)]]);
