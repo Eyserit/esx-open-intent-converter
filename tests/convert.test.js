@@ -45,6 +45,13 @@ test('an Open Intent zip becomes an .esx named after the input', async () => {
   assert.equal(detectFormat(await readZip(result.bytes)), 'esx');
 });
 
+test('an unparseable top-level .json beside the design is ignored', async () => {
+  const entries = await readZip((await convert(fixtureBytes, 'a.esx', options)).bytes);
+  const withJunk = await writeZip([['a-notes.json', new TextEncoder().encode('not json')], ...entries]);
+  const result = await convert(withJunk, 'site.zip', options);
+  assert.equal(result.direction, 'oi-to-esx');
+});
+
 test('progress arrives as reading, converting, images, writing in both directions', async () => {
   const stagesOf = async (bytes, fileName) => {
     const events = [];
