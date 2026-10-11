@@ -3,6 +3,9 @@ import { ConversionError, NotSupportedError } from './errors.js';
 const EOCD_SIGNATURE = 0x06054b50;
 const ZIP64_LOCATOR_SIGNATURE = 0x07064b50;
 const CENTRAL_SIGNATURE = 0x02014b50;
+const LOCAL_SIGNATURE = 0x04034b50;
+const CENTRAL_HEADER_SIZE = 46;
+const LOCAL_HEADER_SIZE = 30;
 const ZIP64_EXTRA_ID = 0x0001;
 const FLAG_ENCRYPTED = 0x0001;
 const METHOD_STORED = 0;
@@ -13,7 +16,8 @@ const MAX_COMMENT_SIZE = 0xffff;
 const MAX_UINT16 = 0xffff;
 const MAX_UINT32 = 0xffffffff;
 
-const ZIP64_UNSUPPORTED = "uses Zip64, which isn't supported";
+const DAMAGED = 'the archive is damaged';
+const ZIP64_UNSUPPORTED = "the archive uses Zip64, which isn't supported";
 
 function findEndOfCentralDirectory(view) {
   const lowest = Math.max(0, view.byteLength - EOCD_MIN_SIZE - MAX_COMMENT_SIZE);
@@ -42,13 +46,18 @@ function assertNotZip64Archive(view, eocd) {
   if (hasLocator || hasMarkerField) throw new ConversionError(ZIP64_UNSUPPORTED);
 }
 
+// Offsets and lengths come from the archive, so they can't be trusted to stay in the buffer.
+function assertInside(view, start, length) {
+  if (start < 0 || length < 0 || start + length > view.byteLength) throw new ConversionError(DAMAGED);
+}
+
 function readCentralEntry(view, bytes, pos) {
-  if (view.getUint32(pos, true) !== CENTRAL_SIGNATURE) {
-    throw new NotSupportedError('Not a zip archive.');
-  }
+  assertInside(view, pos, CENTRAL_HEADER_SIZE);
+  if (view.getUint32(pos, true) !== CENTRAL_SIGNATURE) throw new ConversionError(DAMAGED);
   const nameLength = view.getUint16(pos + 28, true);
   const extraLength = view.getUint16(pos + 30, true);
   const commentLength = view.getUint16(pos + 32, true);
+  assertInside(view, pos + CENTRAL_HEADER_SIZE, nameLength + extraLength + commentLength);
   const entry = {
     flags: view.getUint16(pos + 8, true),
     method: view.getUint16(pos + 10, true),
@@ -70,8 +79,11 @@ function readCentralEntry(view, bytes, pos) {
 
 function locateData(view, entry) {
   const at = entry.localOffset;
+  assertInside(view, at, LOCAL_HEADER_SIZE);
+  if (view.getUint32(at, true) !== LOCAL_SIGNATURE) throw new ConversionError(DAMAGED);
   const nameLength = view.getUint16(at + 26, true);
   const extraLength = view.getUint16(at + 28, true);
+  assertInside(view, at + LOCAL_HEADER_SIZE, nameLength + extraLength);
   // Some writers (Python's force_zip64) mark Zip64 only in the local header.
   const marked =
     view.getUint32(at + 18, true) === MAX_UINT32 ||
@@ -95,7 +107,11 @@ function crc32(data) {
 
 async function inflate(raw) {
   const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  try {
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  } catch {
+    throw new ConversionError(DAMAGED);
+  }
 }
 
 export async function readZip(bytes) {
@@ -109,15 +125,16 @@ export async function readZip(bytes) {
   for (let i = 0; i < entryCount; i++) {
     const entry = readCentralEntry(view, bytes, pos);
     pos = entry.next;
-    if (entry.flags & FLAG_ENCRYPTED) throw new ConversionError('is encrypted');
+    if (entry.flags & FLAG_ENCRYPTED) throw new ConversionError('the archive is encrypted');
     if (entry.method !== METHOD_STORED && entry.method !== METHOD_DEFLATE) {
-      throw new ConversionError('uses an unsupported compression method');
+      throw new ConversionError('the archive uses an unsupported compression method');
     }
     const dataStart = locateData(view, entry);
     if (entry.name.endsWith('/')) continue;
+    assertInside(view, dataStart, entry.compressedSize);
     const raw = bytes.subarray(dataStart, dataStart + entry.compressedSize);
     const data = entry.method === METHOD_DEFLATE ? await inflate(raw) : raw.slice();
-    if (crc32(data) !== entry.crc32) throw new ConversionError('is corrupt (checksum mismatch)');
+    if (crc32(data) !== entry.crc32) throw new ConversionError('the archive is corrupt (checksum mismatch)');
     files.set(entry.name, data);
   }
   return files;

@@ -42,7 +42,41 @@ test('rejects encrypted entries', async () => {
   await rejectsWithReason(readZip(bytes), /encrypted/);
 });
 
-test('rejects an unsupported compression method', async () => {
+test('rejects a corrupt deflate stream as damaged', async () => {
+  const bytes = fixture('python-deflated.zip');
+  const dataStart = 30 + 'a.txt'.length; // first local header has no extra field
+  bytes[dataStart] = 0x07; // final block with the reserved block type
+  await rejectsWithReason(readZip(bytes), /damaged/);
+});
+
+test('rejects a bad local header signature as damaged', async () => {
+  const bytes = fixture('python-stored.zip');
+  bytes[0] = 0x00;
+  await rejectsWithReason(readZip(bytes), /damaged/);
+});
+
+test('rejects a central directory offset past the end as damaged', async () => {
+  const bytes = fixture('python-stored.zip');
+  const eocd = Buffer.from(bytes).lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  new DataView(bytes.buffer).setUint32(eocd + 16, bytes.length + 100, true);
+  await rejectsWithReason(readZip(bytes), /damaged/);
+});
+
+test('rejects a local header offset past the end as damaged', async () => {
+  const bytes = fixture('python-stored.zip');
+  const centralEntry = Buffer.from(bytes).indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+  new DataView(bytes.buffer).setUint32(centralEntry + 42, bytes.length + 100, true);
+  await rejectsWithReason(readZip(bytes), /damaged/);
+});
+
+test('rejects data running past the end of the archive as damaged', async () => {
+  const bytes = fixture('python-stored.zip');
+  const centralEntry = Buffer.from(bytes).indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+  new DataView(bytes.buffer).setUint32(centralEntry + 20, bytes.length, true);
+  await rejectsWithReason(readZip(bytes), /damaged/);
+});
+
+test('rejects an unsupported compression method',async () => {
   const bytes = fixture('python-stored.zip');
   const centralEntry = Buffer.from(bytes).indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
   bytes[centralEntry + 10] = 12; // bzip2
