@@ -1,5 +1,8 @@
 // The browser's image tools for convert(): decode with createImageBitmap, re-encode with OffscreenCanvas.
 // Decode failures reject, so convert() can skip an undecodable candidate the way esx2oi.py does.
+import { ConversionError } from './errors.js';
+
+const PNG_FAILURE = "a floor image couldn't be converted to PNG";
 
 export const browserImageTools = {
   async size(bytes) {
@@ -12,9 +15,19 @@ export const browserImageTools = {
   async toPng(bytes) {
     const bitmap = await createImageBitmap(new Blob([bytes]));
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      bitmap.close();
+      throw new ConversionError(PNG_FAILURE);
+    }
+    context.drawImage(bitmap, 0, 0);
     bitmap.close();
-    const blob = await canvas.convertToBlob({ type: 'image/png' });
+    let blob;
+    try {
+      blob = await canvas.convertToBlob({ type: 'image/png' });
+    } catch (error) {
+      throw Object.assign(new ConversionError(PNG_FAILURE), { cause: error });
+    }
     return new Uint8Array(await blob.arrayBuffer());
   },
 };
