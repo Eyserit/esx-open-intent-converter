@@ -111,4 +111,5 @@ export function createRequest({ fetch, sleep }) {
       }
       return { json, headers: res.headers };
     }
-  }}
+  };
+}
