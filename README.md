@@ -13,6 +13,8 @@ Live site: https://eyserit.github.io/esx-open-intent-converter/
 
 **.esx to Open Intent** mirrors `esx2oi.py` (the port is tested for parity against it). One thing to be aware of: like `esx2oi.py`, it exports fixed radios (2.4 GHz channel 11 and 5 GHz channel 36, both at 6 dBm) rather than the design's real radios.
 
+Floor plans larger than 8000 px on their longest side are shrunk to 8000 px, and every pixel position (APs, walls, the plan's pixel size) is scaled to match. Hamina shrinks larger images on import but keeps reading positions against the original size, which put every AP and wall in the wrong place. Smaller plans are untouched and match `esx2oi.py` exactly.
+
 **Open Intent to .esx** writes floors, walls, and APs with their radios. Antenna patterns come from the bundled library in `src/antenna-library.json`. If a model isn't in the library, a generic omni pattern is used, and the page reports how many APs used it.
 
 Anything else is rejected with an explicit error rather than guessed at.
