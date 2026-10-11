@@ -1,5 +1,5 @@
 import { readZip, writeZip } from './zip.js';
-import { detectFormat } from './detect.js';
+import { detectFormat, findOpenIntentDesign } from './detect.js';
 import { esxToOi } from './esx-to-oi.js';
 import { oiToEsx } from './oi-to-esx.js';
 import { NotSupportedError } from './errors.js';
@@ -29,18 +29,8 @@ async function convertEsx(entries, fileName, { imageTools, report }) {
   };
 }
 
-// detectFormat already guaranteed exactly this kind of entry exists.
-function parseOpenIntentEntry(entries) {
-  for (const [name, data] of entries) {
-    if (name.includes('/') || !name.endsWith('.json')) continue;
-    const parsed = JSON.parse(new TextDecoder().decode(data));
-    if (parsed !== null && typeof parsed === 'object' && 'openintent_version' in parsed) return parsed;
-  }
-  throw new NotSupportedError('no Open Intent design found');
-}
-
 async function convertOpenIntent(entries, fileName, { library, report }) {
-  const design = parseOpenIntentEntry(entries);
+  const design = findOpenIntentDesign(entries); // detectFormat guarantees one exists
   // Images are copied unchanged, so this stage is announced just before they are.
   report({ stage: 'images' });
   const { files, notes } = oiToEsx(design, entries, library, baseName(fileName));
