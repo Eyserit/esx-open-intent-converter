@@ -65,14 +65,14 @@ function readCentralEntry(view, bytes, pos) {
     compressedSize: view.getUint32(pos + 20, true),
     uncompressedSize: view.getUint32(pos + 24, true),
     localOffset: view.getUint32(pos + 42, true),
-    name: new TextDecoder().decode(bytes.subarray(pos + 46, pos + 46 + nameLength)),
-    next: pos + 46 + nameLength + extraLength + commentLength,
+    name: new TextDecoder().decode(bytes.subarray(pos + CENTRAL_HEADER_SIZE, pos + CENTRAL_HEADER_SIZE + nameLength)),
+    next: pos + CENTRAL_HEADER_SIZE + nameLength + extraLength + commentLength,
   };
   const marked =
     entry.compressedSize === MAX_UINT32 ||
     entry.uncompressedSize === MAX_UINT32 ||
     entry.localOffset === MAX_UINT32 ||
-    hasZip64Extra(view, pos + 46 + nameLength, extraLength);
+    hasZip64Extra(view, pos + CENTRAL_HEADER_SIZE + nameLength, extraLength);
   if (marked) throw new ConversionError(ZIP64_UNSUPPORTED);
   return entry;
 }
@@ -88,9 +88,9 @@ function locateData(view, entry) {
   const marked =
     view.getUint32(at + 18, true) === MAX_UINT32 ||
     view.getUint32(at + 22, true) === MAX_UINT32 ||
-    hasZip64Extra(view, at + 30 + nameLength, extraLength);
+    hasZip64Extra(view, at + LOCAL_HEADER_SIZE + nameLength, extraLength);
   if (marked) throw new ConversionError(ZIP64_UNSUPPORTED);
-  return at + 30 + nameLength + extraLength;
+  return at + LOCAL_HEADER_SIZE + nameLength + extraLength;
 }
 
 const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, n) => {

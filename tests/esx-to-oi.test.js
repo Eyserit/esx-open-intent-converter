@@ -13,7 +13,7 @@ const fixtureBytes = (name) => new Uint8Array(readFileSync(new URL(`./fixtures/$
 const fixtureEntries = () => readZip(fixtureBytes('fixture.esx'));
 const esxJson = (entries, name) => JSON.parse(new TextDecoder().decode(entries.get(`${name}.json`)))[name];
 const expected = JSON.parse(new TextDecoder().decode(fixtureBytes('fixture.expected.json')));
-const byId =(items) => Object.fromEntries(items.map((item) => [item.id, item]));
+const byId = (items) => Object.fromEntries(items.map((item) => [item.id, item]));
 
 async function loadFixture() {
   const entries = await fixtureEntries();

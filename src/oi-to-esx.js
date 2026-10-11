@@ -145,18 +145,19 @@ function buildAntennaTypes(aps, library, newId) {
   const genericModels = new Set();
   const antennaTypes = [];
   for (const ap of aps.filter(hasRadios)) {
-    if (idsByModel.has(modelKey(ap))) continue;
+    const key = modelKey(ap);
+    if (idsByModel.has(key)) continue;
     const ids = {};
     for (const band of ANTENNA_BANDS) {
       let entry = findAntenna(library, apVendor(ap), apModel(ap), band);
       if (!entry) {
         entry = genericAntenna(apVendor(ap), apModel(ap), band);
-        genericModels.add(modelKey(ap));
+        genericModels.add(key);
       }
       ids[band] = newId();
       antennaTypes.push({ ...entry, id: ids[band], status: 'CREATED' });
     }
-    idsByModel.set(modelKey(ap), ids);
+    idsByModel.set(key, ids);
   }
   return { antennaTypes, idsByModel, genericModels };
 }

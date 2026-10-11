@@ -79,7 +79,7 @@ test('rejects data running past the end of the archive as damaged', async () => 
   await rejectsWithReason(readZip(bytes), /damaged/);
 });
 
-test('rejects an unsupported compression method',async () => {
+test('rejects an unsupported compression method', async () => {
   const bytes = fixture('python-stored.zip');
   const centralEntry = Buffer.from(bytes).indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
   bytes[centralEntry + 10] = 12; // bzip2

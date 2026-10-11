@@ -79,7 +79,7 @@ main {
   margin: 0 0 clamp(32px, 6vh, 52px);
   text-align: center;
   font-weight: 600;
-  /* The second line is ~14.9em wide in Geist 600, so this keeps it on one line from ~420px up. */
+  /* The second line is ~14.9em wide in Geist 600, so this keeps it on one line from ~510px up. */
   font-size: clamp(2rem, 0.4rem + 4.6vw, 3.4rem);
   line-height: 1.06;
   letter-spacing: -0.038em;
