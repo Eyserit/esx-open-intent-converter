@@ -27,13 +27,14 @@ export async function fitImagesForHamina(openintent, images, imageTools) {
     }
     const width = Math.round(pixels.width * scale);
     const length = Math.round(pixels.length * scale);
-    fittedImages.set(imagePath(floor), await imageTools.resize(images.get(imagePath(floor)), width, length));
+    const path = imagePath(floor);
+    fittedImages.set(path, await imageTools.resize(images.get(path), width, length));
     scaleByFloor.set(floor.name, scale);
+    // Rounding the pixel height nudges the aspect; keep one scale, as Ekahau's metersPerUnit does.
     floorplans.push({
       ...floor,
       dimensions: floor.dimensions.map((d) => (d === pixels
         ? { ...d, width, length, height: d.height * scale }
-        // Rounding the pixel height nudges the aspect; keep one scale, as Ekahau's metersPerUnit does.
         : { ...d, length: length * (d.width / width) })),
       wall_segments: floor.wall_segments.map((wall) => ({
         ...wall,
