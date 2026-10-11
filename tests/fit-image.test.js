@@ -78,3 +78,15 @@ test('walls and AP pixel positions shrink with the image; metres and feet stay p
   assert.deepEqual(feet, openintent.accesspoints[0].coordinates[2].coordinate_xyz);
   assert.deepEqual(fitted.openintent.floorplans[0].dimensions.slice(1), openintent.floorplans[0].dimensions.slice(1));
 });
+
+test('after rounding the pixel height, metres and feet keep one scale with the pixels', async () => {
+  const { openintent, images } = design(9954, 5694);
+
+  const fitted = await fitImagesForHamina(openintent, images, nodeImageTools);
+
+  const [pixels, metres, feet] = fitted.openintent.floorplans[0].dimensions;
+  assert.deepEqual([pixels.width, pixels.length], [8000, 4576]);
+  assert.equal(metres.width, 9954 * 0.05);
+  assert.equal(metres.length, 4576 * (metres.width / 8000));
+  assert.equal(feet.length, 4576 * (feet.width / 8000));
+});

@@ -31,7 +31,10 @@ export async function fitImagesForHamina(openintent, images, imageTools) {
     scaleByFloor.set(floor.name, scale);
     floorplans.push({
       ...floor,
-      dimensions: floor.dimensions.map((d) => (d === pixels ? { ...d, width, length, height: d.height * scale } : d)),
+      dimensions: floor.dimensions.map((d) => (d === pixels
+        ? { ...d, width, length, height: d.height * scale }
+        // Rounding the pixel height nudges the aspect; keep one scale, as Ekahau's metersPerUnit does.
+        : { ...d, length: length * (d.width / width) })),
       wall_segments: floor.wall_segments.map((wall) => ({
         ...wall,
         start_point: scalePoint(wall.start_point, scale),
