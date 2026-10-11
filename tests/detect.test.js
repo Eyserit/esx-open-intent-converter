@@ -18,6 +18,10 @@ test('detects an Open Intent archive from design.json', () => {
   assert.equal(detectFormat(archive({ 'design.json': oiVersion })), 'oi');
 });
 
+test('detects an Open Intent archive from any top-level json file name', () => {
+  assert.equal(detectFormat(archive({ 'Site A export.json': oiVersion })), 'oi');
+});
+
 test('ignores Open Intent files that are not at the top level', () => {
   assert.equal(detectFormat(archive({ 'sub/openintent.json': oiVersion })), null);
 });

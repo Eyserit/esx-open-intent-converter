@@ -1,5 +1,3 @@
-const OPEN_INTENT_NAMES = ['openintent.json', 'design.json'];
-
 const hasOpenIntentVersion = (bytes) => {
   let parsed;
   try {
@@ -11,8 +9,9 @@ const hasOpenIntentVersion = (bytes) => {
   return isPlainObject && 'openintent_version' in parsed;
 };
 
+// Other tools name the file differently, so any top-level .json can be the design.
 const isOpenIntent = (entries) =>
-  OPEN_INTENT_NAMES.some((name) => entries.has(name) && hasOpenIntentVersion(entries.get(name)));
+  [...entries].some(([name, bytes]) => !name.includes('/') && name.endsWith('.json') && hasOpenIntentVersion(bytes));
 
 export function detectFormat(entries) {
   const esx = entries.has('floorPlans.json') && entries.has('project.json');
