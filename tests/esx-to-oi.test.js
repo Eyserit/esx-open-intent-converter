@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  buildAps, buildFloorObjects, buildWallMaterials, buildWallsForFloor, chooseBestImage, esxToOi, round1, sanitizeFilename,
+  buildAps, buildFloorObjects, buildWallMaterials, buildWallsForFloor, chooseBestImage, esxToOi, measureImages, round1,
+  sanitizeFilename,
 } from '../src/esx-to-oi.js';
 import { ConversionError } from '../src/errors.js';
 import { readZip } from '../src/zip.js';
@@ -88,7 +89,7 @@ test('JPEG goes through toPng', async () => {
     size: async () => ({ width: 400, height: 300 }),
     toPng: async () => convertedPng,
   });
-  const { size, png } = await chooseBestImage(entries, 400, 300, tools);
+  const { size, png } = await chooseBestImage(entries, await measureImages(entries, tools), 400, 300, tools);
   assert.deepEqual(tools.toPngCalls, [jpeg]);
   assert.deepEqual(size, [400, 300]);
   assert.equal(png, convertedPng);
@@ -114,7 +115,7 @@ test('buildFloorObjects rounds a half-pixel floor size to even, as Python round 
 test('chooseBestImage skips undecodable images and fails when none is left', async () => {
   const entries = new Map([['image-x', new Uint8Array([1, 2, 3])], ['notes.txt', new Uint8Array()]]);
   await assert.rejects(
-    chooseBestImage(entries, 400, 300, nodeImageTools),
+    chooseBestImage(entries, await measureImages(entries, nodeImageTools), 400, 300, nodeImageTools),
     (err) => err instanceof ConversionError && err.reason === 'has no floor image',
   );
 });
@@ -175,4 +176,11 @@ test('esxToOi reports a present accessPoints.json without its list as unreadable
     esxToOi(entries, nodeImageTools),
     (err) => err instanceof ConversionError && err.reason === 'accessPoints.json is unreadable',
   );
+});
+
+test('esxToOi decodes each candidate image once, not once per floor', async () => {
+  const sizeCalls = [];
+  const tools = { ...nodeImageTools, size: (bytes) => { sizeCalls.push(bytes); return nodeImageTools.size(bytes); } };
+  await esxToOi(await fixtureEntries(), tools);
+  assert.equal(sizeCalls.length, 2);
 });

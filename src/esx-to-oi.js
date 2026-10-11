@@ -102,29 +102,35 @@ export function buildWallsForFloor(floorId, imgH, wallSegments, wallPoints, id2n
 
 const IMAGE_ENTRY = /(?:^|\/)(image-)/i;
 
-// Like esx2oi.py, every image- entry is a candidate for every floor; the closest
-// size wins (either orientation), and undecodable candidates are skipped.
-export async function chooseBestImage(entries, targetW, targetH, imageTools) {
-  let best = null;
-  let bestScore = 1e18;
-  let size = [0, 0];
+// Like esx2oi.py, every image- entry is a candidate for every floor and undecodable
+// candidates are skipped; each is decoded once per conversion rather than once per floor.
+export async function measureImages(entries, imageTools) {
+  const sizes = new Map();
   for (const [name, bytes] of entries) {
     if (!IMAGE_ENTRY.test(name)) continue;
-    let w, h;
     try {
-      ({ width: w, height: h } = await imageTools.size(bytes));
+      const { width, height } = await imageTools.size(bytes);
+      sizes.set(name, [width, height]);
     } catch {
       continue;
     }
+  }
+  return sizes;
+}
+
+// The closest size wins (either orientation); the first wins a tie, as in esx2oi.py.
+export async function chooseBestImage(entries, sizes, targetW, targetH, imageTools) {
+  let best = null;
+  let bestScore = 1e18;
+  for (const [name, [w, h]] of sizes) {
     const sc = Math.min(Math.abs(w - targetW) + Math.abs(h - targetH), Math.abs(h - targetW) + Math.abs(w - targetH));
     if (sc < bestScore) {
       best = name;
       bestScore = sc;
-      size = [w, h];
     }
   }
   if (best === null) throw new ConversionError('has no floor image');
-  return { size, png: await imageTools.toPng(entries.get(best)) };
+  return { size: sizes.get(best), png: await imageTools.toPng(entries.get(best)) };
 }
 
 // Python's round() sends exact halves to the even integer; Math.round sends them up.
@@ -139,11 +145,12 @@ export async function buildFloorObjects(
   const floorsOut = [];
   const images = new Map();
   const floorImgH = {};
+  const sizes = await measureImages(entries, imageTools);
   for (const f of floors) {
     const name = f.name || 'Floor';
     const targetW = roundHalfEven(f.width || f.cropMaxX || 0);
     const targetH = roundHalfEven(f.height || f.cropMaxY || 0);
-    const { size: [w, h], png } = await chooseBestImage(entries, targetW, targetH, imageTools);
+    const { size: [w, h], png } = await chooseBestImage(entries, sizes, targetW, targetH, imageTools);
     const imageRel = `images/${projPrefix}_${sanitizeFilename(name)}.png`;
 
     const dims = [{ width: w, length: h, unit: 'pixels', height: h }];
