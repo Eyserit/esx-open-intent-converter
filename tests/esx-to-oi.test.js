@@ -6,6 +6,7 @@ import {
 } from '../src/esx-to-oi.js';
 import { ConversionError } from '../src/errors.js';
 import { readZip } from '../src/zip.js';
+import { sortMaterials } from './helpers/compare-oi.js';
 import { nodeImageTools, recordingImageTools } from './helpers/node-images.js';
 
 const fixtureBytes = (name) => new Uint8Array(readFileSync(new URL(`./fixtures/${name}`, import.meta.url)));
@@ -133,11 +134,9 @@ test('buildAps matches esx2oi.py accesspoints, clamping AP-B to the floor width'
   assert.equal(aps[1].coordinates[0].coordinate_xyz.x, 400);
 });
 
-const sortedMaterials = (oi) => ({ ...oi, wall_materials: [...oi.wall_materials].sort((a, b) => a.name.localeCompare(b.name)) });
-
 test('esxToOi matches esx2oi.py output for the fixture, key order included', async () => {
   const { openintent, images } = await esxToOi(await fixtureEntries(), nodeImageTools);
-  assert.deepEqual(sortedMaterials(openintent), sortedMaterials(expected.openintent));
+  assert.deepEqual(sortMaterials(openintent), sortMaterials(expected.openintent));
   assert.deepEqual(Object.keys(openintent), Object.keys(expected.openintent));
   assert.deepEqual([...images.keys()], Object.keys(expected.images));
 });
