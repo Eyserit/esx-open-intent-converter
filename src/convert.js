@@ -33,7 +33,8 @@ async function convertOpenIntent(entries, fileName, { library, report }) {
   const design = findOpenIntentDesign(entries); // detectFormat guarantees one exists
   // Images are copied unchanged, so this stage is announced just before they are.
   report({ stage: 'images' });
-  const { files, notes } = oiToEsx(design, entries, library, baseName(fileName));
+  // The library may still be loading; only this direction waits for it.
+  const { files, notes } = oiToEsx(design, entries, await library, baseName(fileName));
   report({ stage: 'writing' });
   return {
     direction: 'oi-to-esx',

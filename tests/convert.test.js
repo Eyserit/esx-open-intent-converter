@@ -82,6 +82,19 @@ test('fixture -> Open Intent -> .esx -> Open Intent comes back the same', async 
   assert.deepEqual(two.imageSizes, one.imageSizes);
 });
 
+test('an Open Intent zip waits for a library that is still loading', async () => {
+  const oiZip = (await convert(fixtureBytes, 'a.esx', options)).bytes;
+  const result = await convert(oiZip, 'a.zip', { ...options, library: Promise.resolve(library) });
+  assert.equal(result.direction, 'oi-to-esx');
+});
+
+test('an .esx converts even when the library failed to load', async () => {
+  const failed = Promise.reject(new Error('antenna library: HTTP 404'));
+  failed.catch(() => {}); // only an Open Intent conversion would await it
+  const result = await convert(fixtureBytes, 'a.esx', { ...options, library: failed });
+  assert.equal(result.direction, 'esx-to-oi');
+});
+
 test('a zip that is neither format is not supported', async () => {
   const unrelated = await writeZip([['readme.txt', new TextEncoder().encode('hello')]]);
   await assert.rejects(convert(unrelated, 'x.zip', options), NotSupportedError);

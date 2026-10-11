@@ -28,11 +28,14 @@ const ACTIONS = {
 const STAGE_PERCENT = { reading: 12, converting: 38, images: 66, writing: 90 };
 const FORMAT_BY_DIRECTION = { 'esx-to-oi': 'esx', 'oi-to-esx': 'oi' };
 
-// Fetched once at load so no request happens while converting.
+// Fetched once at load so no request happens while converting. Only Open Intent -> .esx
+// awaits it, so a failed load surfaces there; this handler stops it being an unhandled
+// rejection at load and leaves .esx -> Open Intent working.
 const libraryReady = fetch('src/antenna-library.json').then((response) => {
   if (!response.ok) throw new Error(`antenna library: HTTP ${response.status}`);
   return response.json();
 });
+libraryReady.catch(() => {});
 
 let currentEvent = { type: 'idle' };
 let downloadUrl = null;
@@ -90,13 +93,12 @@ async function convertFile(file) {
   setProgress('reading');
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const library = await libraryReady;
     const onProgress = (event) => {
       direction = event.direction ?? direction;
       show({ type: 'converting', fileName: file.name, direction });
       setProgress(event.stage);
     };
-    const result = await convert(bytes, file.name, { imageTools: browserImageTools, library, onProgress });
+    const result = await convert(bytes, file.name, { imageTools: browserImageTools, library: libraryReady, onProgress });
     offerDownload(result);
     show({ type: 'done', outputName: result.outputName, notes: result.notes });
   } catch (error) {
