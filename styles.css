@@ -11,8 +11,12 @@
   --border-outer: rgba(255, 255, 255, 0.06);
   --border-inner: rgba(255, 255, 255, 0.085);
   --highlight: rgba(255, 255, 255, 0.07);
-  --lit-border: rgba(255, 228, 205, 0.38);
-  --lit-glow: rgba(255, 214, 180, 0.075);
+  /* Dragging lights the card with the warm accent. */
+  --lit-border: rgba(255, 140, 74, 0.85);
+  --lit-shell: rgba(255, 140, 74, 0.4);
+  --lit-halo: rgba(255, 122, 47, 0.12);
+  --lit-glow: rgba(255, 122, 47, 0.32);
+  --lit-wash: rgba(255, 122, 47, 0.16);
   --pill-bg: rgba(255, 255, 255, 0.06);
   --pill-bg-hover: rgba(255, 255, 255, 0.1);
   --pill-border: rgba(255, 255, 255, 0.11);
@@ -60,7 +64,8 @@ body {
 main {
   flex: 1;
   width: 100%;
-  max-width: 600px;
+  /* Wide enough for the headline's longer line; the card keeps its own narrower width. */
+  max-width: 880px;
   margin: 0 auto;
   padding: clamp(56px, 12vh, 128px) 16px 48px;
   display: flex;
@@ -74,7 +79,8 @@ main {
   margin: 0 0 clamp(32px, 6vh, 52px);
   text-align: center;
   font-weight: 600;
-  font-size: clamp(2rem, 1.2rem + 3.6vw, 3.4rem);
+  /* The second line is ~14.9em wide in Geist 600, so this keeps it on one line from ~420px up. */
+  font-size: clamp(2rem, 0.4rem + 4.6vw, 3.4rem);
   line-height: 1.06;
   letter-spacing: -0.038em;
   text-wrap: balance;
@@ -92,6 +98,7 @@ main {
 
 .card {
   width: 100%;
+  max-width: 568px;
   padding: 6px;
   border-radius: 30px;
   background: var(--shell);
@@ -128,20 +135,30 @@ main {
 }
 
 .card[data-state="dragging"] {
-  border-color: var(--lit-border);
-  box-shadow: 0 0 0 6px var(--lit-glow), 0 0 60px -10px var(--lit-glow);
+  border-color: var(--lit-shell);
+  box-shadow: 0 0 0 5px var(--lit-halo), 0 0 90px -6px var(--lit-glow);
 }
 
 .card[data-state="dragging"] .card-inner {
   border-color: var(--lit-border);
   background:
-    radial-gradient(28rem 16rem at 50% 0%, var(--lit-glow), transparent 75%),
+    radial-gradient(30rem 18rem at 50% 0%, var(--lit-wash), transparent 75%),
     linear-gradient(180deg, var(--card-top), var(--card-bottom));
+  box-shadow:
+    inset 0 1px 0 var(--lit-shell),
+    inset 0 0 40px var(--lit-halo),
+    0 40px 80px -40px rgba(0, 0, 0, 0.85);
   animation: breathe 1.6s ease-in-out infinite;
 }
 
+.card[data-state="dragging"] .glyph {
+  color: var(--accent);
+  border-color: var(--lit-shell);
+  box-shadow: 0 0 0 5px var(--lit-halo), inset 0 1px 0 var(--highlight);
+}
+
 @keyframes breathe {
-  50% { border-color: var(--border-inner); }
+  50% { border-color: var(--lit-shell); }
 }
 
 /* Glyph: one icon per state, all in the text colour so nothing reads as an alarm */
@@ -300,19 +317,19 @@ main {
 
 /* Trust line and footer */
 
+/* A plain centred block with an inline icon, so the lock wraps with the text instead of drifting away. */
 .trust {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   margin: 24px 0 0;
   color: var(--text-dim);
   font-size: 0.875rem;
   text-align: center;
+  text-wrap: balance;
 }
 
 .trust svg {
-  flex: none;
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 6px;
   width: 15px;
   height: 15px;
   fill: none;
