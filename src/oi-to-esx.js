@@ -32,7 +32,7 @@ const wallTypeFrom = (material, newId) => ({
 
 export function buildEsxWalls(oi, floorByName, newId) {
   const wallTypes = oi.wall_materials.map((material) => wallTypeFrom(material, newId));
-  const wallTypeIdByMaterial = Object.fromEntries(oi.wall_materials.map((m, i) => [m.name, wallTypes[i].id]));
+  const wallTypeIdByMaterial = new Map(oi.wall_materials.map((m, i) => [m.name, wallTypes[i].id]));
   const wallPoints = [];
   const wallSegments = [];
 
@@ -45,9 +45,9 @@ export function buildEsxWalls(oi, floorByName, newId) {
   };
 
   for (const source of oi.floorplans) {
-    const floor = floorByName[source.name];
+    const floor = floorByName.get(source.name);
     for (const segment of source.wall_segments) {
-      const wallTypeId = wallTypeIdByMaterial[segment.wall_type];
+      const wallTypeId = wallTypeIdByMaterial.get(segment.wall_type);
       if (!wallTypeId) throw new ConversionError(`wall type "${segment.wall_type}" is not defined`);
       wallSegments.push({
         wallPoints: [addPoint(floor, segment.start_point), addPoint(floor, segment.end_point)],
@@ -75,7 +75,7 @@ export function buildEsxFloors(oi, files, newId) {
   const floorPlans = [];
   const images = [];
   const imageFiles = new Map();
-  const floorByName = {};
+  const floorByName = new Map();
 
   for (const source of oi.floorplans) {
     const pixels = dimensionIn(source, 'pixels');
@@ -97,12 +97,12 @@ export function buildEsxFloors(oi, files, newId) {
       cropMinX: 0.0, cropMinY: 0.0, cropMaxX: pixels.width, cropMaxY: pixels.length,
       rotateUpDirection: 'UP', tags: [], id: floorId, status: 'CREATED',
     });
-    floorByName[source.name] = { id: floorId, mpu, heightPx: pixels.length };
+    floorByName.set(source.name, { id: floorId, mpu, heightPx: pixels.length });
   }
   return { floorPlans, images, imageFiles, floorByName };
 }
 
-const BAND_BY_OI = { 'FREQ_2.4GHZ': 'TWO', FREQ_5GHZ: 'FIVE', FREQ_6GHZ: 'SIX' };
+const BAND_BY_OI = new Map([['FREQ_2.4GHZ', 'TWO'], ['FREQ_5GHZ', 'FIVE'], ['FREQ_6GHZ', 'SIX']]);
 const ANTENNA_BANDS = ['TWO', 'FIVE', 'SIX'];
 const BASE_MHZ = { TWO: 2407, FIVE: 5000, SIX: 5950 };
 
@@ -115,7 +115,7 @@ function centreFrequency(band, channel) {
 }
 
 function esxBand(ap, radio) {
-  const band = BAND_BY_OI[radio.band];
+  const band = BAND_BY_OI.get(radio.band);
   if (!band) throw new ConversionError(`AP "${ap.name}" has an unsupported radio band "${radio.band}"`);
   return band;
 }
@@ -181,7 +181,7 @@ function buildEsxAccessPoints(oi, floorByName, library, newId) {
   const accessPoints = [];
   const simulatedRadios = [];
   for (const ap of oi.accesspoints) {
-    const floor = floorByName[ap.floorplan_name];
+    const floor = floorByName.get(ap.floorplan_name);
     if (!floor) throw new ConversionError(`AP "${ap.name}" is on floor "${ap.floorplan_name}", which doesn't exist`);
     const pixels = pixelPosition(ap, floor);
     const antennaHeight = coordinateIn(ap, 'meters')?.z ?? DEFAULT_ANTENNA_HEIGHT_M;

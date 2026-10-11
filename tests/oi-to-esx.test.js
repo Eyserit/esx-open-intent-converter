@@ -39,7 +39,7 @@ test('floors take pixel size, metres-per-pixel scale and their image bytes from 
     const image = images.find((img) => img.id === floor.imageId);
     assert.deepEqual([image.resolutionWidth, image.resolutionHeight], [pixels.width, pixels.length]);
     assert.deepEqual(imageFiles.get(`image-${image.id}`), files.get(source.map_uri.replace('file://', '')));
-    assert.deepEqual(floorByName[source.name], { id: floor.id, mpu: floor.metersPerUnit, heightPx: pixels.length });
+    assert.deepEqual(floorByName.get(source.name), { id: floor.id, mpu: floor.metersPerUnit, heightPx: pixels.length });
   });
 });
 
@@ -140,6 +140,17 @@ test('a wall whose type names no material is a ConversionError', async () => {
   );
 });
 
+test('a wall type named like an Object property is still not defined', async () => {
+  const { oi, files } = await loadOi();
+  const { floorByName } = buildEsxFloors(oi, files, counter());
+  oi.floorplans[0].wall_segments[0].wall_type = 'toString';
+
+  assert.throws(
+    () => buildEsxWalls(oi, floorByName, counter()),
+    (err) => err instanceof ConversionError && err.reason === 'wall type "toString" is not defined',
+  );
+});
+
 test('wall points are flipped back to bottom-up and every segment reference resolves', async () => {
   const { oi, files } = await loadOi();
   const { floorByName } = buildEsxFloors(oi, files, counter());
@@ -152,7 +163,7 @@ test('wall points are flipped back to bottom-up and every segment reference reso
   wallSegments.forEach((segment, i) => {
     const { floor, segment: source } = sources[i];
     const [start, end] = segment.wallPoints.map((id) => wallPoints.find((p) => p.id === id));
-    const { id: floorId, heightPx } = floorByName[floor.name];
+    const { id: floorId, heightPx } = floorByName.get(floor.name);
     assert.deepEqual(start.location, {
       floorPlanId: floorId, coord: { x: source.start_point.x, y: heightPx - source.start_point.y },
     });
@@ -407,5 +418,19 @@ test('a radio on an unknown band is a ConversionError naming the AP and band', a
   await rejectsWith(
     (oi) => { oi.accesspoints[0].dot11_radios[1].band = 'FREQ_60GHZ'; },
     'AP "AP-A" has an unsupported radio band "FREQ_60GHZ"',
+  );
+});
+
+test('a radio band named like an Object property is still unsupported', async () => {
+  await rejectsWith(
+    (oi) => { oi.accesspoints[0].dot11_radios[1].band = 'constructor'; },
+    'AP "AP-A" has an unsupported radio band "constructor"',
+  );
+});
+
+test('an AP on a floor named like an Object property is still an unknown floor', async () => {
+  await rejectsWith(
+    (oi) => { oi.accesspoints[2].floorplan_name = 'constructor'; },
+    `AP "AP-C" is on floor "constructor", which doesn't exist`,
   );
 });
