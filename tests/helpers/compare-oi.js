@@ -30,6 +30,7 @@ export const sortMaterials = (design) => ({
 export async function readOpenIntentZip(bytes) {
   const entries = await readZip(bytes);
   const design = sortMaterials(JSON.parse(new TextDecoder().decode(entries.get('openintent.json'))));
-  const imageSizes = Object.fromEntries([...entries].filter(([n]) => n !== 'openintent.json').map(([n, b]) => [n, b.length]));
-  return { design, imageSizes };
+  const images = [...entries].filter(([name]) => name !== 'openintent.json');
+  const imageSizes = Object.fromEntries(images.map(([name, bytes]) => [name, bytes.length]));
+  return { design, images, imageSizes };
 }
