@@ -32,7 +32,7 @@ test('round1 matches Python float(f"{x:.1f}"), including ties to even', () => {
 });
 
 test('sanitizeFilename folds accents, joins runs of other characters with _ and falls back to Floor', () => {
-  assert.equal(sanitizeFilename('CDSP-manual-Automação-AP34'), 'CDSP-manual-Automacao-AP34');
+  assert.equal(sanitizeFilename('Lab-Automação-Piso1'), 'Lab-Automacao-Piso1');
   assert.equal(sanitizeFilename('..a b/c..'), 'a_b_c');
   assert.equal(sanitizeFilename('日本'), 'Floor');
 });

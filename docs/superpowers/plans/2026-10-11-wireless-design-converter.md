@@ -38,7 +38,7 @@
 
 1. **Open Intent from another tool with AP positions only in metres or feet** (no `pixels` entry): the position comes from metres ÷ mpu, or feet ÷ 3.28084 ÷ mpu. Tested in Task 8.
 2. **A real `.esx` whose floor image is a JPEG:** `esxToOi` must pass it through `imageTools.toPng`, never copy the raw bytes. Tested in Task 4 with a recording stand-in, and checked in the browser in Task 11.
-3. **Non-ASCII floor and project names** (the sample's floor is `CDSP-manual-Automação-AP34`): `sanitizeFilename` matches Python, and zip entry names are written with the UTF-8 flag. Tested in Tasks 2 and 3.
+3. **Non-ASCII floor and project names** (for example `Lab-Automação-Piso1`): `sanitizeFilename` matches Python, and zip entry names are written with the UTF-8 flag. Tested in Tasks 2 and 3.
 4. **Awkward file names** (`site.v2.esx`, `design` with no extension, `SITE.ESX`): the output name is the base name without its last extension, plus `.zip` or `.esx`. Tested in Task 9.
 5. **An Open Intent AP whose `floorplan_name` matches no floor, or a floor with no scale:** `ConversionError` naming the AP or floor, never a crash. Tested in Task 7 and Task 8.
 
@@ -160,7 +160,7 @@
     - `AP-C`: Acme X1, First floor.
 - [ ] **Step 2: failing tests, one at a time:**
   - `round1` cases: `0.25→0.2`, `0.75→0.8`, `1.25→1.2`, `0.35→0.3`, `2.675→2.7`, `-0.25→-0.2`, `3→3`.
-  - `sanitizeFilename("CDSP-manual-Automação-AP34") === "CDSP-manual-Automacao-AP34"`, `sanitizeFilename("..a b/c..") === "a_b_c"` and `sanitizeFilename("日本") === "Floor"`.
+  - `sanitizeFilename("Lab-Automação-Piso1") === "Lab-Automacao-Piso1"`, `sanitizeFilename("..a b/c..") === "a_b_c"` and `sanitizeFilename("日本") === "Floor"`.
   - `buildWallMaterials` on the fixture: two materials, no `Unused`, Brick `attenuation_per_m` 12.3 (the `TWO` fallback), and Drywall 30 (the `FIVE` value is preferred).
   - `buildWallsForFloor`: Ground gives four segments, the one with the missing point is skipped, and `y` is flipped (`300 - y`).
   - `buildFloorObjects` matches `expected.openintent.floorplans` with exact deep equality, and the image sizes match `expected.images`.
