@@ -199,6 +199,10 @@ function buildEsxAccessPoints(oi, floorByName, library, newId) {
     const antennaIds = idsByModel.get(modelKey(ap));
     radiosOf(ap).forEach((radio, index) => {
       const band = esxBand(ap, radio);
+      if (!Number.isFinite(radio.channel)) throw new ConversionError(`AP "${ap.name}" has a radio without a channel`);
+      if (!Number.isFinite(radio.transmit_power)) {
+        throw new ConversionError(`AP "${ap.name}" has a radio without a transmit power`);
+      }
       simulatedRadios.push({
         accessPointId: id,
         accessPointIndex: index,

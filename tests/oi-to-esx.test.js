@@ -421,6 +421,34 @@ test('a radio on an unknown band is a ConversionError naming the AP and band', a
   );
 });
 
+test('a radio without a channel is a ConversionError naming the AP', async () => {
+  await rejectsWith(
+    (oi) => { delete oi.accesspoints[1].dot11_radios[0].channel; },
+    'AP "AP-B" has a radio without a channel',
+  );
+});
+
+test('a radio with a non-numeric channel is a ConversionError naming the AP', async () => {
+  await rejectsWith(
+    (oi) => { oi.accesspoints[1].dot11_radios[0].channel = '6'; },
+    'AP "AP-B" has a radio without a channel',
+  );
+});
+
+test('a radio without a transmit power is a ConversionError naming the AP', async () => {
+  await rejectsWith(
+    (oi) => { delete oi.accesspoints[1].dot11_radios[1].transmit_power; },
+    'AP "AP-B" has a radio without a transmit power',
+  );
+});
+
+test('a radio with a non-numeric transmit power is a ConversionError naming the AP', async () => {
+  await rejectsWith(
+    (oi) => { oi.accesspoints[1].dot11_radios[1].transmit_power = null; },
+    'AP "AP-B" has a radio without a transmit power',
+  );
+});
+
 test('two floors with the same name are a ConversionError naming it', async () => {
   await rejectsWith((oi) => { oi.floorplans[1].name = 'Ground'; }, 'two floors are named "Ground"');
 });
