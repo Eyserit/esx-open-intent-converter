@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  buildFloorObjects, buildWallMaterials, buildWallsForFloor, chooseBestImage, round1, sanitizeFilename,
+  buildAps, buildFloorObjects, buildWallMaterials, buildWallsForFloor, chooseBestImage, esxToOi, round1, sanitizeFilename,
 } from '../src/esx-to-oi.js';
 import { ConversionError } from '../src/errors.js';
 import { readZip } from '../src/zip.js';
@@ -115,5 +115,38 @@ test('chooseBestImage skips undecodable images and fails when none is left', asy
   await assert.rejects(
     chooseBestImage(entries, 400, 300, nodeImageTools),
     (err) => err instanceof ConversionError && err.reason === 'has no floor image',
+  );
+});
+
+test('buildAps matches esx2oi.py accesspoints, clamping AP-B to the floor width', async () => {
+  const { entries, floors } = await loadFixture();
+  const metersPerUnit = Object.fromEntries(floors.map((f) => [f.id, Number(f.metersPerUnit || 0)]));
+  const floorNameById = Object.fromEntries(floors.map((f) => [f.id, f.name || 'Floor']));
+  const floorImgHById = { 'fp-g': 300, 'fp-f': 480 };
+  const floorDimsByName = Object.fromEntries(
+    expected.openintent.floorplans.map((f) => [f.name, [f.dimensions[0].width, f.dimensions[0].length]]),
+  );
+  const aps = buildAps(
+    esxJson(entries, 'accessPoints'), floorNameById, floorImgHById, metersPerUnit, floorDimsByName, 'ubiquiti', 'uap-ac-pro',
+  );
+  assert.deepEqual(aps, expected.openintent.accesspoints);
+  assert.equal(aps[1].coordinates[0].coordinate_xyz.x, 400);
+});
+
+const sortedMaterials = (oi) => ({ ...oi, wall_materials: [...oi.wall_materials].sort((a, b) => a.name.localeCompare(b.name)) });
+
+test('esxToOi matches esx2oi.py output for the fixture, key order included', async () => {
+  const { openintent, images } = await esxToOi(await fixtureEntries(), nodeImageTools);
+  assert.deepEqual(sortedMaterials(openintent), sortedMaterials(expected.openintent));
+  assert.deepEqual(Object.keys(openintent), Object.keys(expected.openintent));
+  assert.deepEqual([...images.keys()], Object.keys(expected.images));
+});
+
+test('esxToOi names the required file that is missing', async () => {
+  const entries = await fixtureEntries();
+  entries.delete('wallSegments.json');
+  await assert.rejects(
+    esxToOi(entries, nodeImageTools),
+    (err) => err instanceof ConversionError && err.reason === 'missing wallSegments.json',
   );
 });

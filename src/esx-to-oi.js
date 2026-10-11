@@ -155,3 +155,114 @@ export async function buildFloorObjects(
   }
   return { floorsOut, images, floorImgH };
 }
+
+// Mirrors Python's max(lo, min(hi, v)) for numeric v.
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function buildApCoordinates(ap, floorId, floorName, floorImgHById, metersPerUnit, floorDimsByName) {
+  const coord = (ap.location ?? {}).coord ?? {};
+  let xPx = coord.x;
+  let yPx = coord.y;
+  if (typeof xPx !== 'number' || typeof yPx !== 'number') return [];
+  const imgH = Number(floorImgHById[floorId] || 0);
+  yPx = imgH ? imgH - yPx : yPx;
+  if (floorDimsByName && Object.hasOwn(floorDimsByName, floorName)) {
+    const [width, length] = floorDimsByName[floorName];
+    xPx = clamp(xPx, 0, width);
+    yPx = clamp(yPx, 0, length);
+  }
+  const mpu = Number(metersPerUnit[floorId] || 0);
+  if (!(mpu > 0)) return [{ coordinate_xyz: { x: xPx, y: yPx, z: 0, unit: 'pixels' } }];
+  const xM = xPx * mpu;
+  const yM = yPx * mpu;
+  return [
+    { coordinate_xyz: { x: xPx, y: yPx, z: 2.5 / mpu, unit: 'pixels' } },
+    { coordinate_xyz: { x: xM, y: yM, z: 2.5, unit: 'meters' } },
+    { coordinate_xyz: { x: xM * 3.28084, y: yM * 3.28084, z: 8.202, unit: 'feet' } },
+  ];
+}
+
+// Every AP gets the fallback vendor/model so the importer shows it; the originals are kept.
+export function buildAps(
+  aps, floorNameById, floorImgHById, metersPerUnit, floorDimsByName, fallbackVendor, fallbackModel,
+) {
+  const vendor = (fallbackVendor || 'ubiquiti').toLowerCase();
+  const model = (fallbackModel || 'uap-ac-pro').toLowerCase();
+  return (aps ?? []).map((ap, i) => {
+    const loc = ap.location ?? {};
+    const floorId = loc.floorPlanId || ap.floorPlanId || ap.floorId;
+    const floorName = floorNameById[floorId] || 'Floor';
+    return {
+      name: ap.name || `AP-${i}`,
+      floorplan_name: floorName,
+      manufacturer: vendor,
+      model,
+      dot11_radios: [
+        { id: 0, radio_function: 'CLIENT_ACCESS', band: 'FREQ_2.4GHZ', channel: 11, channel_width: '20_MHz', transmit_power: 6, mimo_chains: 2 },
+        { id: 1, radio_function: 'CLIENT_ACCESS', band: 'FREQ_5GHZ', channel: 36, channel_width: '80_MHz', transmit_power: 6, mimo_chains: 2 },
+      ],
+      antennas: [{ vendor, model, bands: [{ band: 'FREQ_2.4GHZ' }, { band: 'FREQ_5GHZ' }] }],
+      coordinates: buildApCoordinates(ap, floorId, floorName, floorImgHById, metersPerUnit, floorDimsByName),
+      orientation: { rotation: 0, tilt: 0 },
+      display_color: '#4687f0',
+      manufacturer_original: (ap.vendor || ap.manufacturer || '').trim(),
+      model_original: (ap.model || '').trim(),
+    };
+  });
+}
+
+const decoder = new TextDecoder();
+
+function readRequiredJson(entries, fileName, key) {
+  if (!entries.has(fileName)) throw new ConversionError(`missing ${fileName}`);
+  return JSON.parse(decoder.decode(entries.get(fileName)))[key];
+}
+
+function readOptionalList(entries, fileName, key) {
+  return entries.has(fileName) ? readRequiredJson(entries, fileName, key) : [];
+}
+
+// esx2oi.py falls back to "Project" on any project.json problem; this mirrors it.
+function readProjectTitle(entries) {
+  try {
+    const project = readRequiredJson(entries, 'project.json', 'project');
+    return project.title || project.name || 'Project';
+  } catch {
+    return 'Project';
+  }
+}
+
+const byId = (items) => Object.fromEntries(items.map((item) => [item.id, item]));
+
+export async function esxToOi(
+  entries, imageTools, { prefix = '[Imported] ', fallbackVendor = 'ubiquiti', fallbackModel = 'uap-ac-pro' } = {},
+) {
+  const floors = readRequiredJson(entries, 'floorPlans.json', 'floorPlans');
+  const wallSegments = readRequiredJson(entries, 'wallSegments.json', 'wallSegments');
+  const wallPoints = byId(readRequiredJson(entries, 'wallPoints.json', 'wallPoints'));
+  const wallTypes = byId(readRequiredJson(entries, 'wallTypes.json', 'wallTypes'));
+  const esxAps = readOptionalList(entries, 'accessPoints.json', 'accessPoints');
+  const metersPerUnit = Object.fromEntries(floors.map((f) => [f.id, Number(f.metersPerUnit || 0)]));
+  const projectTitle = readProjectTitle(entries);
+
+  const { materials, id2name } = buildWallMaterials(wallTypes, wallSegments, prefix);
+  const { floorsOut, images, floorImgH } = await buildFloorObjects(
+    entries, floors, wallSegments, wallPoints, id2name, sanitizeFilename(projectTitle), metersPerUnit, projectTitle, imageTools,
+  );
+  const floorNameById = Object.fromEntries(floors.map((f) => [f.id, f.name || 'Floor']));
+  const floorDimsByName = Object.fromEntries(
+    floorsOut.map((f) => [f.name, [f.dimensions[0].width, f.dimensions[0].length]]),
+  );
+  const accesspoints = buildAps(esxAps, floorNameById, floorImgH, metersPerUnit, floorDimsByName, fallbackVendor, fallbackModel);
+
+  return {
+    openintent: {
+      openintent_version: '2.0.0',
+      floorplans: floorsOut,
+      wall_materials: materials,
+      accesspoints,
+      switches: [],
+    },
+    images,
+  };
+}
