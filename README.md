@@ -2,7 +2,7 @@
 
 A single web page that converts between an Ekahau `.esx` design and an Open Intent `.zip`.
 
-Live site: (added when published)
+Live site: https://eyserit.github.io/esx-open-intent-converter/
 
 ## What the page does
 
