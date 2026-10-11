@@ -75,13 +75,13 @@ function readBody(req, maxBytes) {
 export function createAppServer({ root, routes, maxBodyBytes = MAX_BODY_BYTES }) {
   async function handle(req, res) {
     // Refusing any other Host stops DNS rebinding from making this server answer a hostile site.
-    const { port } = req.socket.server.address();
-    if (!allowedHosts(port).includes(req.headers.host)) return sendJson(res, 403, { error: 'Forbidden.' });
+    const hosts = allowedHosts(server.address().port);
+    if (!hosts.includes(req.headers.host)) return sendJson(res, 403, { error: 'Forbidden.' });
     const { pathname } = new URL(req.url, 'http://localhost');
     if (req.method === 'GET' && pathname === '/api/health') return sendJson(res, 200, { ok: true });
     if (req.method === 'POST' && routes.has(pathname)) {
       // Browsers always send Origin on cross-site POSTs, so a missing or foreign one is refused.
-      if (!allowedHosts(port).map((host) => `http://${host}`).includes(req.headers.origin)) {
+      if (!hosts.map((host) => `http://${host}`).includes(req.headers.origin)) {
         return sendJson(res, 403, { error: 'Forbidden.' });
       }
       const text = await readBody(req, maxBodyBytes);
@@ -103,5 +103,6 @@ export function createAppServer({ root, routes, maxBodyBytes = MAX_BODY_BYTES })
   }
 
   // A dropped connection mid-upload must not crash the process; the error text is never printed.
-  return createServer((req, res) => handle(req, res).catch(() => res.destroy()));
+  const server = createServer((req, res) => handle(req, res).catch(() => res.destroy()));
+  return server;
 }
