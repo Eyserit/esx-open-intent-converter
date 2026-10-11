@@ -13,7 +13,7 @@ Live site: (added when published)
 
 **.esx to Open Intent** mirrors `esx2oi.py` (the port is tested for parity against it). One thing to be aware of: like `esx2oi.py`, it exports fixed radios (2.4 GHz channel 11 and 5 GHz channel 36, both at 6 dBm) rather than the design's real radios.
 
-**Open Intent to .esx** writes floors, walls, and APs with their radios. Antenna patterns come from the bundled library in `src/antenna-library.json`. If a model isn't in the library, a generic omni pattern is used. The page reports which antennas were matched and which fell back.
+**Open Intent to .esx** writes floors, walls, and APs with their radios. Antenna patterns come from the bundled library in `src/antenna-library.json`. If a model isn't in the library, a generic omni pattern is used, and the page reports how many APs used it.
 
 Anything else is rejected with an explicit error rather than guessed at.
 
@@ -27,7 +27,7 @@ Then open http://localhost:8000.
 
 ## Tests and checks
 
-No npm packages are needed, only Node.
+No npm packages are needed, only Node 22 or later (built and tested on Node 26).
 
 - `npm test` runs the test suite against the small synthetic fixtures in `tests/fixtures/`.
 - `npm run check` runs `node --check` on every `.js` and `.mjs` file.
