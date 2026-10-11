@@ -1,0 +1,389 @@
+{
+  "openintent": {
+    "openintent_version": "2.0.0",
+    "floorplans": [
+      {
+        "name": "Ground",
+        "map_uri": "file://images/Fixture_Site_Ground.png",
+        "dimensions": [
+          {
+            "width": 400,
+            "length": 300,
+            "unit": "pixels",
+            "height": 50.0
+          },
+          {
+            "width": 20.0,
+            "length": 15.0,
+            "unit": "meters",
+            "height": 2.5
+          },
+          {
+            "width": 65.6168,
+            "length": 49.2126,
+            "unit": "feet",
+            "height": 8.202
+          }
+        ],
+        "coverage_areas": [],
+        "wall_segments": [
+          {
+            "wall_type": "[Imported] Drywall",
+            "start_point": {
+              "x": 10.0,
+              "y": 280.0
+            },
+            "end_point": {
+              "x": 390.0,
+              "y": 280.0
+            }
+          },
+          {
+            "wall_type": "[Imported] Brick",
+            "start_point": {
+              "x": 390.0,
+              "y": 280.0
+            },
+            "end_point": {
+              "x": 390.0,
+              "y": 19.5
+            }
+          },
+          {
+            "wall_type": "[Imported] Drywall",
+            "start_point": {
+              "x": 390.0,
+              "y": 19.5
+            },
+            "end_point": {
+              "x": 10.25,
+              "y": 19.5
+            }
+          },
+          {
+            "wall_type": "[Imported] Brick",
+            "start_point": {
+              "x": 10.25,
+              "y": 19.5
+            },
+            "end_point": {
+              "x": 10.0,
+              "y": 280.0
+            }
+          }
+        ],
+        "project_name": "Fixture Síte",
+        "rotation": 0,
+        "reference_markers": [],
+        "floor_id": "fp-g"
+      },
+      {
+        "name": "First floor",
+        "map_uri": "file://images/Fixture_Site_First_floor.png",
+        "dimensions": [
+          {
+            "width": 640,
+            "length": 480,
+            "unit": "pixels",
+            "height": 62.5
+          },
+          {
+            "width": 25.6,
+            "length": 19.2,
+            "unit": "meters",
+            "height": 2.5
+          },
+          {
+            "width": 83.98950400000001,
+            "length": 62.992127999999994,
+            "unit": "feet",
+            "height": 8.202
+          }
+        ],
+        "coverage_areas": [],
+        "wall_segments": [
+          {
+            "wall_type": "[Imported] Drywall",
+            "start_point": {
+              "x": 50.0,
+              "y": 420.0
+            },
+            "end_point": {
+              "x": 600.0,
+              "y": 420.0
+            }
+          },
+          {
+            "wall_type": "[Imported] Brick",
+            "start_point": {
+              "x": 600.0,
+              "y": 420.0
+            },
+            "end_point": {
+              "x": 600.0,
+              "y": 39.25
+            }
+          }
+        ],
+        "project_name": "Fixture Síte",
+        "rotation": 0,
+        "reference_markers": [],
+        "floor_id": "fp-f"
+      }
+    ],
+    "wall_materials": [
+      {
+        "name": "[Imported] Drywall",
+        "itu_material_type": "ITU_R_UNKNOWN",
+        "rf_properties": {
+          "attenuation_flat": 3.0,
+          "attenuation_per_m": 30.0
+        },
+        "thickness_m": 0.1,
+        "display_color": "#c0c0c0"
+      },
+      {
+        "name": "[Imported] Brick",
+        "itu_material_type": "ITU_R_UNKNOWN",
+        "rf_properties": {
+          "attenuation_flat": 3.1,
+          "attenuation_per_m": 12.3
+        },
+        "thickness_m": 0.25,
+        "display_color": "#a0522d"
+      }
+    ],
+    "accesspoints": [
+      {
+        "name": "AP-A",
+        "floorplan_name": "Ground",
+        "manufacturer": "ubiquiti",
+        "model": "uap-ac-pro",
+        "dot11_radios": [
+          {
+            "id": 0,
+            "radio_function": "CLIENT_ACCESS",
+            "band": "FREQ_2.4GHZ",
+            "channel": 11,
+            "channel_width": "20_MHz",
+            "transmit_power": 6,
+            "mimo_chains": 2
+          },
+          {
+            "id": 1,
+            "radio_function": "CLIENT_ACCESS",
+            "band": "FREQ_5GHZ",
+            "channel": 36,
+            "channel_width": "80_MHz",
+            "transmit_power": 6,
+            "mimo_chains": 2
+          }
+        ],
+        "antennas": [
+          {
+            "vendor": "ubiquiti",
+            "model": "uap-ac-pro",
+            "bands": [
+              {
+                "band": "FREQ_2.4GHZ"
+              },
+              {
+                "band": "FREQ_5GHZ"
+              }
+            ]
+          }
+        ],
+        "coordinates": [
+          {
+            "coordinate_xyz": {
+              "x": 100.0,
+              "y": 150.0,
+              "z": 50.0,
+              "unit": "pixels"
+            }
+          },
+          {
+            "coordinate_xyz": {
+              "x": 5.0,
+              "y": 7.5,
+              "z": 2.5,
+              "unit": "meters"
+            }
+          },
+          {
+            "coordinate_xyz": {
+              "x": 16.4042,
+              "y": 24.6063,
+              "z": 8.202,
+              "unit": "feet"
+            }
+          }
+        ],
+        "orientation": {
+          "rotation": 0,
+          "tilt": 0
+        },
+        "display_color": "#4687f0",
+        "manufacturer_original": "Mist",
+        "model_original": "AP34"
+      },
+      {
+        "name": "AP-B",
+        "floorplan_name": "Ground",
+        "manufacturer": "ubiquiti",
+        "model": "uap-ac-pro",
+        "dot11_radios": [
+          {
+            "id": 0,
+            "radio_function": "CLIENT_ACCESS",
+            "band": "FREQ_2.4GHZ",
+            "channel": 11,
+            "channel_width": "20_MHz",
+            "transmit_power": 6,
+            "mimo_chains": 2
+          },
+          {
+            "id": 1,
+            "radio_function": "CLIENT_ACCESS",
+            "band": "FREQ_5GHZ",
+            "channel": 36,
+            "channel_width": "80_MHz",
+            "transmit_power": 6,
+            "mimo_chains": 2
+          }
+        ],
+        "antennas": [
+          {
+            "vendor": "ubiquiti",
+            "model": "uap-ac-pro",
+            "bands": [
+              {
+                "band": "FREQ_2.4GHZ"
+              },
+              {
+                "band": "FREQ_5GHZ"
+              }
+            ]
+          }
+        ],
+        "coordinates": [
+          {
+            "coordinate_xyz": {
+              "x": 400.0,
+              "y": 224.5,
+              "z": 50.0,
+              "unit": "pixels"
+            }
+          },
+          {
+            "coordinate_xyz": {
+              "x": 20.0,
+              "y": 11.225000000000001,
+              "z": 2.5,
+              "unit": "meters"
+            }
+          },
+          {
+            "coordinate_xyz": {
+              "x": 65.6168,
+              "y": 36.827429,
+              "z": 8.202,
+              "unit": "feet"
+            }
+          }
+        ],
+        "orientation": {
+          "rotation": 0,
+          "tilt": 0
+        },
+        "display_color": "#4687f0",
+        "manufacturer_original": "Mist",
+        "model_original": "AP34"
+      },
+      {
+        "name": "AP-C",
+        "floorplan_name": "First floor",
+        "manufacturer": "ubiquiti",
+        "model": "uap-ac-pro",
+        "dot11_radios": [
+          {
+            "id": 0,
+            "radio_function": "CLIENT_ACCESS",
+            "band": "FREQ_2.4GHZ",
+            "channel": 11,
+            "channel_width": "20_MHz",
+            "transmit_power": 6,
+            "mimo_chains": 2
+          },
+          {
+            "id": 1,
+            "radio_function": "CLIENT_ACCESS",
+            "band": "FREQ_5GHZ",
+            "channel": 36,
+            "channel_width": "80_MHz",
+            "transmit_power": 6,
+            "mimo_chains": 2
+          }
+        ],
+        "antennas": [
+          {
+            "vendor": "ubiquiti",
+            "model": "uap-ac-pro",
+            "bands": [
+              {
+                "band": "FREQ_2.4GHZ"
+              },
+              {
+                "band": "FREQ_5GHZ"
+              }
+            ]
+          }
+        ],
+        "coordinates": [
+          {
+            "coordinate_xyz": {
+              "x": 320.0,
+              "y": 240.0,
+              "z": 62.5,
+              "unit": "pixels"
+            }
+          },
+          {
+            "coordinate_xyz": {
+              "x": 12.8,
+              "y": 9.6,
+              "z": 2.5,
+              "unit": "meters"
+            }
+          },
+          {
+            "coordinate_xyz": {
+              "x": 41.994752000000005,
+              "y": 31.496063999999997,
+              "z": 8.202,
+              "unit": "feet"
+            }
+          }
+        ],
+        "orientation": {
+          "rotation": 0,
+          "tilt": 0
+        },
+        "display_color": "#4687f0",
+        "manufacturer_original": "Acme",
+        "model_original": "X1"
+      }
+    ],
+    "switches": []
+  },
+  "images": {
+    "images/Fixture_Site_Ground.png": [
+      400,
+      300
+    ],
+    "images/Fixture_Site_First_floor.png": [
+      640,
+      480
+    ]
+  }
+}
