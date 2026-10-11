@@ -1,0 +1,7 @@
+# Real designs and floor plans never go in the public repo
+*.esx
+!tests/fixtures/*.esx
+probe-throwaway/
+
+.venv/
+.DS_Store
