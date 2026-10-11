@@ -440,6 +440,18 @@ test('a radio on an unknown band is a ConversionError naming the AP and band', a
   );
 });
 
+test('a design without a floorplans list is a ConversionError', async () => {
+  await rejectsWith((oi) => { delete oi.floorplans; }, 'the Open Intent file has no floors');
+});
+
+test('a design whose floorplans is not a list is a ConversionError', async () => {
+  await rejectsWith((oi) => { oi.floorplans = { name: 'Ground' }; }, 'the Open Intent file has no floors');
+});
+
+test('a design with no floors is a ConversionError', async () => {
+  await rejectsWith((oi) => { oi.floorplans = []; }, 'the Open Intent file has no floors');
+});
+
 test('a design without an accesspoints list converts with no APs', async () => {
   const { accessPoints, radios, antennaTypes, notes } = await convertFixture((oi) => { delete oi.accesspoints; });
 

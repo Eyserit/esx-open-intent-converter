@@ -82,6 +82,7 @@ export function buildEsxFloors(oi, files, newId) {
   const imageFiles = new Map();
   const floorByName = new Map();
 
+  if (!Array.isArray(oi.floorplans) || oi.floorplans.length === 0) throw new ConversionError('the Open Intent file has no floors');
   for (const source of oi.floorplans) {
     if (floorByName.has(source.name)) throw new ConversionError(`two floors are named "${source.name}"`);
     const pixels = dimensionIn(source, 'pixels');
