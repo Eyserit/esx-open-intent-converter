@@ -37,6 +37,11 @@ function isWithinDomain(url, domain) {
   return url.protocol === 'https:' && (url.hostname === domain || url.hostname.endsWith(`.${domain}`));
 }
 
+async function readJson(res) {
+  const text = await res.text();
+  return text === '' ? null : JSON.parse(text);
+}
+
 async function errorText(res) {
   try {
     const { errors } = await res.json();
@@ -70,8 +75,9 @@ export function createMerakiClient({ fetch, sleep }) {
         // The thrown error's text can echo the URL, so it is dropped rather than relayed.
         throw fail(502, `Couldn't reach ${new URL(url).hostname}.`);
       }
-      if (res.status >= 300 && res.status < 400 && res.headers.get('Location')) {
-        const next = parseUrl(res.headers.get('Location'), url);
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get('Location');
+        const next = location && parseUrl(location, url);
         // Following a redirect elsewhere would hand the API key to that host.
         if (!next || !isWithinDomain(next, domain) || hops++ === MAX_REDIRECTS) {
           throw fail(502, GENERIC_MESSAGE);
@@ -89,7 +95,14 @@ export function createMerakiClient({ fetch, sleep }) {
       if (res.status === 401) throw fail(401, `That API key wasn't accepted by Meraki (${label}).`);
       if (res.status >= 500) throw fail(502, GENERIC_MESSAGE);
       if (res.status >= 400) throw fail(502, (await errorText(res)) || GENERIC_MESSAGE);
-      return { json: await res.json(), headers: res.headers };
+      let json;
+      try {
+        json = await readJson(res);
+      } catch {
+        // Parser errors quote the body, which may echo the key.
+        throw fail(502, GENERIC_MESSAGE);
+      }
+      return { json, headers: res.headers };
     }
   }
 

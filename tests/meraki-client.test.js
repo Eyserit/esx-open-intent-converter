@@ -145,6 +145,49 @@ test('meraki.com.evil.example is outside the domain', async () => {
   assert.equal(calls.length, 1);
 });
 
+test('a non-JSON 200 body that echoes the key becomes the generic error', async () => {
+  const { fetch, calls } = fakeFetch([]);
+  const echo = async (url, init) => {
+    calls.push({ url, init });
+    return new Response('oops k123 <html>', { status: 200 });
+  };
+  const client = createMerakiClient({ fetch: echo, sleep: async () => {} });
+  await assert.rejects(
+    client._request({ region: 'global', apiKey: 'k123' }, 'GET', '/organizations'),
+    (err) =>
+      err.status === 502 &&
+      err.message === 'Something went wrong talking to Meraki.' &&
+      !err.message.includes('k123'),
+  );
+});
+
+test('an empty 204 gives null json', async () => {
+  const empty = async () => new Response(null, { status: 204 });
+  const client = createMerakiClient({ fetch: empty, sleep: async () => {} });
+  const { json } = await client._request({ region: 'global', apiKey: 'k123' }, 'DELETE', '/x');
+  assert.equal(json, null);
+});
+
+test('a 3xx without Location becomes the generic error', async () => {
+  const { client } = setup([{ status: 302 }]);
+  await assert.rejects(
+    client._request({ region: 'global', apiKey: 'k123' }, 'GET', '/organizations'),
+    (err) => err.status === 502 && err.message === 'Something went wrong talking to Meraki.',
+  );
+});
+
+test('refuses an http: downgrade redirect inside the domain', async () => {
+  const { client, calls } = setup([
+    { status: 302, headers: { Location: 'http://n149.meraki.com/api/v1/organizations' } },
+    { body: [] },
+  ]);
+  await assert.rejects(
+    client._request({ region: 'global', apiKey: 'k123' }, 'GET', '/organizations'),
+    (err) => err.status === 502 && err.message === 'Something went wrong talking to Meraki.',
+  );
+  assert.equal(calls.length, 1);
+});
+
 test('stops after 3 redirects', async () => {
   const hop = { status: 307, headers: { Location: 'https://n149.meraki.com/api/v1/organizations' } };
   const { client, calls } = setup([hop, hop, hop, hop, { body: [] }]);
