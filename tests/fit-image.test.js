@@ -46,6 +46,24 @@ test('a plan wider than 8000 px is shrunk to 8000 px wide, pixel dimensions incl
   assert.deepEqual(pixels(floor), { width: 8000, length: 4000, unit: 'pixels', height: 40 });
 });
 
+test('a plan of 8000 px or less passes through untouched', async () => {
+  const { openintent, images } = design(8000, 5000);
+  const tools = { ...nodeImageTools, resize: () => assert.fail('resize should not be called') };
+
+  const fitted = await fitImagesForHamina(openintent, images, tools);
+
+  assert.deepEqual(fitted.openintent, openintent);
+  assert.equal(fitted.images.get(IMAGE), images.get(IMAGE));
+});
+
+test('a tall plan is capped by its height', async () => {
+  const { openintent, images } = design(3000, 12000);
+
+  const fitted = await fitImagesForHamina(openintent, images, nodeImageTools);
+
+  assert.deepEqual(await nodeImageTools.size(fitted.images.get(IMAGE)), { width: 2000, height: 8000 });
+});
+
 test('walls and AP pixel positions shrink with the image; metres and feet stay put', async () => {
   const { openintent, images } = design(10000, 5000);
 
