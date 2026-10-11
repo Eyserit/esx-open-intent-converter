@@ -48,6 +48,16 @@ test('each route passes its fields to the client and returns 200', async () => {
   }
 });
 
+test('extra fields in the body never reach the client', async () => {
+  const { client, calls } = fakeClient();
+  const routes = createRoutes(client);
+  for (const [path, body] of Object.entries(bodies)) {
+    calls.length = 0;
+    await routes.get(path)({ ...body, forbiddenMeansBadKey: true, junk: 'x' });
+    assert.deepEqual(calls.map((call) => call.args), [body]);
+  }
+});
+
 test('a missing field is a 400 naming it, and the client is not called', async () => {
   const { client, calls } = fakeClient();
   const routes = createRoutes(client);

@@ -1,11 +1,16 @@
 import { GENERIC_MESSAGE, MerakiError } from './meraki-request.js';
 
-const CORNERS =['topLeftCorner', 'topRightCorner'];
+const CORNERS = ['topLeftCorner', 'topRightCorner'];
 
 const CREDENTIALS = ['region', 'apiKey'];
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value !== '';
+}
+
+// The client spreads leftover fields into its request context, so callers must not smuggle extras in.
+function pick(body, fields) {
+  return Object.fromEntries(fields.map((field) => [field, body[field]]));
 }
 
 function isCorner(value) {
@@ -19,10 +24,11 @@ function firstInvalidField(body, fields) {
 export function createRoutes(client) {
   function route(fields, call) {
     return async (body) => {
-      const invalid = firstInvalidField(body, [...CREDENTIALS, ...fields]);
+      const allowed = [...CREDENTIALS, ...fields];
+      const invalid = firstInvalidField(body, allowed);
       if (invalid) return { status: 400, json: { error: `Missing or invalid ${invalid}.` } };
       try {
-        return { status: 200, json: await call(body) };
+        return { status: 200, json: await call(pick(body, allowed)) };
       } catch (error) {
         if (error instanceof MerakiError) return { status: error.status, json: { error: error.message } };
         // Unknown errors may carry the API key, so their text never reaches the browser.
