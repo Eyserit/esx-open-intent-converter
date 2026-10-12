@@ -250,6 +250,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     const nameProblem = el('p', { className: 'field-error', id: `meraki-floor-name-${index}-problem` });
     nameInput.setAttribute('aria-describedby', nameProblem.id);
     const nameField = field(`meraki-floor-name-${index}`, 'Name in Meraki', nameInput, nameProblem);
+    // A floor that can't be uploaded at all has nothing to name.
+    nameField.hidden = Boolean(floors[index].problem);
     const item = el('li', { className: 'floor-row' }, box, label, tag, place, nameField);
 
     nameInput.addEventListener('input', () => {
