@@ -50,6 +50,16 @@ export function effectivePlacements(placements, building) {
   return new Map(Array.from({ length: building.count }, (_, i) => [i, building.placement]));
 }
 
+// The floor whose outline stands in for the whole building on the map.
+export function buildingReferenceIndex(floors, rows) {
+  let best = null;
+  floors.forEach((floor, i) => {
+    const area = floor.widthM * floor.lengthM;
+    if (best === null || area > floors[best].widthM * floors[best].lengthM) best = i;
+  });
+  return best;
+}
+
 export const ACTION_LABELS = { create: 'Create', update: 'Update existing', blocked: "Can't upload" };
 
 export const NO_ORGANISATIONS = "This API key doesn't have access to any organisations.";

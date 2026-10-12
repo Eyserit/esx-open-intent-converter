@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  floorRows, uploadButton, finishedCard, suggestMerakiName, merakiNameProblem, effectivePlacements,
+  floorRows, uploadButton, finishedCard, suggestMerakiName, merakiNameProblem, effectivePlacements, buildingReferenceIndex,
 } from '../src/meraki-messages.js';
 
 const floor = (name, problem = null) => ({ name, widthM: 10, lengthM: 20, image: null, problem });
@@ -209,4 +209,11 @@ test('with the floors placed one by one, each floor keeps its own placement and 
   const placements = new Map([[1, spot]]);
   const building = { together: false, placement: { center: { lat: 5, lng: 6 }, rotation: 0 }, count: 2 };
   assert.equal(effectivePlacements(placements, building), placements);
+});
+
+const sized = (widthM, lengthM, problem = null) => ({ name: 'F', widthM, lengthM, image: null, problem });
+
+test('the building is placed with the outline of the largest ticked floor', () => {
+  const floors = [sized(10, 10), sized(20, 30), sized(15, 15)];
+  assert.equal(buildingReferenceIndex(floors, floorRows(floors, [], new Map(), new Set())), 1);
 });
