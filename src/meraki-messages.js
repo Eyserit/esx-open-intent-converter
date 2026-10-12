@@ -12,6 +12,11 @@ export function suggestMerakiName(floorName) {
   return suggestion || 'Floor';
 }
 
+export function merakiNameProblem(name) {
+  if (name.trim() === '') return 'Enter a name.';
+  return null;
+}
+
 function rowFor(floor, isRepeat, existingPlans, placements, unticked) {
   const base = { name: floor.name, placed: placements.has(floor.name) };
   const blocked = (reason) => ({ ...base, action: 'blocked', reason, ticked: false });

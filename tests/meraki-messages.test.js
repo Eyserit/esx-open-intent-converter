@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  floorRows, uploadButton, finishedCard, suggestMerakiName,
+  floorRows, uploadButton, finishedCard, suggestMerakiName, merakiNameProblem,
 } from '../src/meraki-messages.js';
 
 const floor = (name, problem = null) => ({ name, widthM: 10, lengthM: 20, image: null, problem });
@@ -82,4 +82,9 @@ test('a suggested Meraki name is cut to 25 characters and trimmed again', () => 
   assert.equal(suggestMerakiName('Basement Level Two North Annex'), 'Basement Level Two North');
   // Astral letters are two UTF-16 units each, so the cut must count code points.
   assert.equal(suggestMerakiName('𝐀'.repeat(26)), '𝐀'.repeat(25));
+});
+
+test('an empty or blank Meraki name asks for a name', () => {
+  assert.equal(merakiNameProblem(''), 'Enter a name.');
+  assert.equal(merakiNameProblem('   '), 'Enter a name.');
 });
