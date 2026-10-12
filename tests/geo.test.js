@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cornersFor, parseCoordinates, offsetBy, bearingTo, wrapRotation } from '../src/geo.js';
+import { cornersFor, parseCoordinates, offsetBy, bearingTo, wrapRotation, apLatLng, distanceM } from '../src/geo.js';
 
 const EARTH_RADIUS_M = 6371008.8;
 const centre = { lat: 53.35, lng: -6.26 };
@@ -82,4 +82,32 @@ test('wrapRotation keeps a rotation within the slider range', () => {
   for (const [rotation, expected] of cases) {
     assert.equal(wrapRotation(rotation), expected, `${rotation}`);
   }
+});
+
+test("an AP at the image's top-left lands on the plan's top-left corner", () => {
+  const plan = { center: centre, rotation: 30, widthM: 40, lengthM: 30 };
+  assert.deepEqual(apLatLng(plan, 0, 0), cornersFor(plan).topLeft);
+});
+
+test("an AP at the image's centre lands on the plan's centre", () => {
+  const plan = { center: centre, rotation: 30, widthM: 40, lengthM: 30 };
+  const ap = apLatLng(plan, 20, 15);
+  assert.ok(Math.abs(ap.lat - centre.lat) < 1e-9);
+  assert.ok(Math.abs(ap.lng - centre.lng) < 1e-9);
+});
+
+test('at 90° an AP on the east edge lands south of the centre', () => {
+  const plan = { center: centre, rotation: 90, widthM: 40, lengthM: 30 };
+  const ap = apLatLng(plan, 40, 15);
+  assert.ok(Math.abs(ap.lat - (centre.lat - 20 / 111320)) < 1e-9);
+  assert.ok(Math.abs(ap.lng - centre.lng) < 1e-9);
+});
+
+test("an AP's distance from the centre is right to 5 cm", () => {
+  const plan = { center: centre, rotation: 0, widthM: 40, lengthM: 30 };
+  assert.ok(Math.abs(metresBetween(centre, apLatLng(plan, 40, 0)) - 25) < 0.05);
+});
+
+test('distanceM measures small flat distances', () => {
+  assert.ok(Math.abs(distanceM(centre, offsetBy(centre, 0.3, 0.4)) - 0.5) < 1e-6);
 });

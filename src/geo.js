@@ -24,11 +24,22 @@ export function cornersFor({ center, widthM, lengthM, rotation }) {
   return { topLeft: at(-w, l), topRight: at(w, l), bottomRight: at(w, -l), bottomLeft: at(-w, -l) };
 }
 
+// The image origin is its top-left, with y growing downwards, so measure from the plan's centre first.
+export function apLatLng({ center, rotation, widthM, lengthM }, xM, yM) {
+  return pointAt(center, rotation, xM - widthM / 2, lengthM / 2 - yM);
+}
+
 export function offsetBy(center, eastM, northM) {
   return {
     lat: center.lat + northM / METRES_PER_DEGREE_LAT,
     lng: center.lng + eastM / metresPerDegreeLng(center.lat),
   };
+}
+
+export function distanceM(a, b) {
+  const northM = (b.lat - a.lat) * METRES_PER_DEGREE_LAT;
+  const eastM = (b.lng - a.lng) * metresPerDegreeLng(a.lat);
+  return Math.hypot(eastM, northM);
 }
 
 export function bearingTo(from, to) {
