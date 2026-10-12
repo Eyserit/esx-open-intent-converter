@@ -25,12 +25,14 @@ A single static web page that converts one dropped file between an Ekahau `.esx`
 python3 -m http.server 8000          # converter only, then open http://localhost:8000
 npm start                            # converter plus the Meraki relay on http://localhost:8000 (PORT overrides)
 PORT=8123 node tools/fake-meraki.mjs # page against a fake Meraki, API key test-key
-npm test                             # 202 tests, node:test, no packages (Node 22+, built on Node 26)
+npm test                             # 282 tests, node:test, no packages (Node 22+, built on Node 26)
 npm run check                        # node --check on every .js/.mjs
 npm run test:sample                  # local only: parity and round trip on the private sample
+npm run test:survey                  # local only: BSSIDs read from the private survey sample (counts only)
 ```
 
 - `npm run test:sample` needs `ekahau_sample.esx` in the repo root (git-ignored, private, never commit it) and `.venv` with Pillow (`python3 -m venv .venv && .venv/bin/pip install pillow`). It runs the original `esx2oi.py` and compares.
+- `npm run test:survey` needs `survey_sample.esx` in the repo root (git-ignored, private; `SURVEY_SAMPLE` overrides the path). It prints counts only. With either private file missing, its local check is skipped, not failed.
 - Regenerate fixtures with `.venv/bin/python tools/make-fixture.py`. Note it also rewrites the `python-*.zip` fixtures with new timestamps; restore those with `git checkout` if you didn't mean to change them.
 - In the Claude desktop app, the workspace `.claude/launch.json` has a `converter` preview entry serving this folder on port 8000.
 
@@ -49,13 +51,17 @@ npm run test:sample                  # local only: parity and round trip on the 
 | `src/messages.js` | All card copy (pure, tested). |
 | `src/browser-images.js` | Canvas-based decode / PNG encode / resize. Node tests use `tests/helpers/node-images.js` instead. |
 | `server/start.js`, `server/server.js` | `npm start`. Static files plus POST routes, bound to 127.0.0.1 only. 140 MB request body cap (a 100 MB file base64-encoded fits); the 100 MB file cap is in `src/convert.js` and `app.js`. |
-| `server/meraki-routes.js` | The `/api/...` routes (organisations, networks, floor plans, upload). Pure validation, then the client. |
+| `server/meraki-routes.js` | The `/api/...` routes (organisations, networks, floor plans, upload, `/api/access-points` and `/api/access-points/place`). Pure validation, then the client. |
 | `server/meraki-client.js`, `server/meraki-request.js` | Calls to the Dashboard API: paging, retries on rate limits, upload. The relay refuses redirects and paging URLs outside the region's https domain. |
-| `meraki-flow.js` | Browser side of the Send to Meraki steps (key, network, floors, map, Uploading, Finished). Uploading has no Back, by design. Finished has Disconnect, which returns to the Done card with the download kept. |
+| `meraki-flow.js` | Browser side of the Send to Meraki steps (key, network, floors, map, Uploading, access point results, Finished). Uploading has no Back, by design. Finished has Disconnect, which returns to the Done card with the download kept. |
 | `map-place.js` | The Leaflet map dialog: search, drag, rotate. |
 | `src/meraki-regions.js`, `src/meraki-messages.js` | Region list and the flow's card copy (pure, tested). |
 | `src/floors.js`, `src/floor-plan-match.js`, `src/geo.js` | Pure helpers: floor selection, exact-name matching and duplicate detection, outline corners and rotation maths. |
-| `tools/fake-meraki.mjs` | Fake Meraki behind the real routes. A floor named "Rate" gets a rate-limit error on its first upload. |
+| `src/design-aps.js` | The design's APs as `{ name, floorName, xM, yM, mine, bssids }`: from an `.esx` (BSSIDs via `measuredRadios` → `accessPointMeasurements`) or from Open Intent (no BSSIDs). Handed on as `result.openintent.designAps`. |
+| `src/ap-match.js` | `matchAccessPoints` (name, then BSSID, with ambiguity and double-claim rules) and `placementAction` (place, move, none or skip; 0.5 m tolerance). |
+| `src/ap-phase.js` | `runApPhase`: the access point phase after the floor uploads (list, match, place, collect results), kept out of `meraki-flow.js` so it can be tested. |
+| `tools/fake-meraki.mjs` | Fake Meraki behind the real routes, including a few fake APs with BSSIDs. A floor named "Rate" gets a rate-limit error on its first upload. |
+| `tools/make-survey-fixture.mjs` | Builds `tests/fixtures/survey-fixture.esx`: synthetic APs and survey measurements on `fixture.esx`'s floors. |
 | `vendor/leaflet/` | Leaflet 1.9.4 with its licence. |
 | `src/errors.js` | Only `NotSupportedError` and `ConversionError(reason)` may escape `convert()`. Reasons are standalone phrases shown after "…couldn't be converted: ". |
 | `esx2oi.py`, `LICENSE` | The reference implementation, kept for attribution and the parity tests. Not loaded by the page. |
@@ -85,6 +91,14 @@ Design docs: `docs/superpowers/specs/2026-10-11-wireless-design-converter-design
 - Meraki documents no image size limit. We cap uploads at 100 MB ourselves.
 - Reading geo data from Ekahau or Open Intent to pre-place a floor is not done.
 
+**Meraki Dashboard (access points):**
+- Devices: `GET /organizations/{orgId}/devices?networkIds[]=…&productTypes[]=wireless&perPage=1000` (paged) gives `serial`, `name`, `lat`, `lng` for wireless devices only. `GET /networks/{id}/devices` isn't used: Meraki marks it deprecated and it has no `productType`.
+- That endpoint has no `floorPlanId`. Each floor plan's `devices[]` (from `GET /networks/{id}/floorPlans`) lists its serials, so an AP's floor plan is the one whose `devices` contains it. `listAccessPoints` returns `{ accessPoints, floorPlans }`.
+- BSSIDs: `GET /organizations/{orgId}/wireless/ssids/statuses/byDevice` (`basicServiceSets[].bssid`). A 403 means the key lacks read access to wireless status; Meraki's own text is shown, redacted.
+- Placement: `PUT /devices/{serial}` with `lat`, `lng` and `floorPlanId`.
+- Matching: name (trim, ignore case; empty names never match; 2+ Meraki APs with that name falls through), then BSSID (exactly one Meraki AP shares a lower-case BSSID). A Meraki AP claimed by 2+ design APs is placed for none. BSSIDs exist only in Ekahau survey data.
+- Only APs marked `mine` are placed (a missing `mine` counts as yours). Two design floors with the same name are skipped, since APs join floors by name. AP coordinates beyond the image edge are clamped to it.
+
 **Map services:**
 - OpenStreetMap tiles need attribution, a normal Referer and no prefetching.
 - Nominatim allows at most one request a second. Search on Enter only, no autocomplete.
@@ -102,10 +116,12 @@ Design docs: `docs/superpowers/specs/2026-10-11-wireless-design-converter-design
 6. **More AP models:** `node tools/add-antennas.mjs "<path to .esx>"` copies only antenna patterns into the library. Check `git diff` before committing; the library is public.
 7. Minor: `defaultAntennas` order is TWO, FIVE, SIX (Ekahau accepted it); case variants of a vendor name create duplicate antenna types (harmless).
 8. **Meraki upload gaps:** paging has no page cap; the Nominatim response isn't validated beyond `ok`; the fake server's 401 always says "(Global)".
+9. **AP placement gaps:** APs are placed only on floors uploaded in this run, never on floors from an earlier run. BSSID matching needs Ekahau survey data; Open Intent and predictive designs match by name only. A `byDevice` entry with a null `basicServiceSets` or a non-string `bssid` currently fails the whole listing instead of being skipped.
 
 ## Recent history
 
 - Built test-first through a 13-task plan, with a review after every task and a whole-branch review at the end.
 - Added the local Send to Meraki Dashboard flow (spec `docs/superpowers/specs/2026-10-11-meraki-upload-design.md`).
+- Added access point placement to the Send to Meraki flow (spec `docs/superpowers/specs/2026-10-12-meraki-ap-placement-design.md`, plan with its changes from the spec in `docs/superpowers/plans/2026-10-12-meraki-ap-placement.md`), plus the `test:survey` local check.
 - Fixed after launch: Hamina misplacing APs and walls on plans over 8000 px (`src/fit-image.js`).
 - An early commit (the plan, before the design was cleaned up) contains the sample's floor name. The user chose to leave history as it is.

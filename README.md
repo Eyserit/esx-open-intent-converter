@@ -41,7 +41,13 @@ After a conversion, the Done card offers "Send to Meraki". The flow:
    With 2 or more floors, tick "These floors are one building: place them together" to place the largest ticked floor once; every floor shares its centre and rotation.
 5. Upload. A floor is created, or updated if a floor plan with exactly the same name exists. The outline position and rotation are applied in Meraki.
 
-Floor plans only. APs are not placed.
+6. Access points are then placed on the floors that uploaded. Each of your design's APs (an Open Intent input counts every AP) is matched to an AP already claimed into the chosen network, first by name (case and surrounding spaces ignored), then by BSSID. Matched APs are placed on the floor plan at their design position, with no review step, and a results list follows.
+   - An AP already on another floor plan is left alone. One already on this floor plan is moved only if it is more than 0.5 m from the design position.
+   - BSSIDs come from Ekahau survey data only. A predictive design, or an Open Intent input, has none, so it matches by name only.
+   - If the BSSID lookup fails with a 403, the API key lacks read access to wireless status.
+   - Only floors uploaded in this run get APs.
+
+The relay uses these Meraki endpoints for access points: `GET /organizations/{orgId}/devices?networkIds[]=…&productTypes[]=wireless` for the devices, each floor plan's `devices[]` for which floor plan an AP is on, `GET /organizations/{orgId}/wireless/ssids/statuses/byDevice` for BSSIDs, and `PUT /devices/{serial}` to place an AP. `GET /networks/{id}/devices` is not used because Meraki marks it deprecated.
 
 **What is stored and where data goes.** Files are converted in the browser and nothing is stored. The API key exists only in page memory and in the request that carries it, and goes only to Meraki. The local server relays requests to Meraki and keeps nothing.
 
@@ -49,7 +55,7 @@ Floor plans only. APs are not placed.
 
 **Limits.** An uploaded file can be at most 100 MB. The cap applies to the public site too.
 
-**Checking the page without a real Dashboard.** `PORT=8123 node tools/fake-meraki.mjs` serves the page against a fake Meraki. Use the API key `test-key`.
+**Checking the page without a real Dashboard.** `PORT=8123 node tools/fake-meraki.mjs` serves the page against a fake Meraki, with a few fake access points. Use the API key `test-key`.
 
 Leaflet 1.9.4 (BSD-2-Clause) is included unchanged in `vendor/leaflet/`, with its licence.
 
@@ -60,6 +66,7 @@ No npm packages are needed, only Node 22 or later (built and tested on Node 26).
 - `npm test` runs the test suite against the small synthetic fixtures in `tests/fixtures/`.
 - `npm run check` runs `node --check` on every `.js` and `.mjs` file.
 - `npm run test:sample` runs local-only checks against a real design. It needs a private `ekahau_sample.esx` in the repo root and a `.venv` with Pillow. Never commit real designs.
+- `npm run test:survey` runs a local-only check that BSSIDs are read from a real Ekahau survey. It needs a private `survey_sample.esx` in the repo root (or set `SURVEY_SAMPLE` to another path) and prints counts only. Without the file it is skipped, as `test:sample` is without its file.
 
 ## Regenerating fixtures
 
