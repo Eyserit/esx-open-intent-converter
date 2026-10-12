@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMerakiClient } from '../server/meraki-client.js';
+import { REGIONS } from '../src/meraki-regions.js';
 
 function fakeFetch(responses) {
   const calls = [];
@@ -48,6 +49,18 @@ test('a Link page outside the domain is refused', async () => {
     client.listOrganizations(ctx),
     (err) => err.status === 502 && err.message === 'Something went wrong talking to Meraki.',
   );
+  assert.equal(calls.length, 1);
+});
+
+test('an http: Link page inside the domain is refused', async () => {
+  const { client, calls } = setup([
+    {
+      body: [{ id: '1', name: 'One' }],
+      headers: { Link: '<http://n1.meraki.com/api/v1/organizations?startingAfter=1>; rel=next' },
+    },
+    { body: [] },
+  ]);
+  await assert.rejects(client.listOrganizations(ctx), (err) => err.status === 502);
   assert.equal(calls.length, 1);
 });
 
@@ -213,4 +226,29 @@ test('placing an AP PUTs lat, lng and floorPlanId to the encoded serial', async 
   assert.equal(calls[0].url, `${AP_BASE}/devices/Q2XX%2F1`);
   assert.equal(calls[0].init.method, 'PUT');
   assert.deepEqual(JSON.parse(calls[0].init.body), { lat: 53.1, lng: -6.2, floorPlanId: 'fp1' });
+});
+
+test('every request from every method, in every region, goes over https to that region', async () => {
+  for (const [region, { host }] of Object.entries(REGIONS)) {
+    const urls = [];
+    async function fetch(url, init) {
+      urls.push(url);
+      const body = url.includes('statuses/byDevice') ? { items: [] }
+        : init.method === 'GET' ? [] : { floorPlanId: 'fp1' };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }
+    const client = createMerakiClient({ fetch, sleep: async () => {} });
+    const c = { region, apiKey: 'k123' };
+    await client.listOrganizations(c);
+    await client.listWirelessNetworks({ ...c, organizationId: 'o1' });
+    await client.listFloorPlans({ ...c, networkId: 'n1' });
+    await client.uploadFloorPlan({
+      ...c, networkId: 'n1', name: 'Ground', imageContents: 'AA==',
+      topLeftCorner: { lat: 53.1, lng: -6.2 }, topRightCorner: { lat: 53.1, lng: -6.1 },
+    });
+    await client.listAccessPoints({ ...c, organizationId: 'o1', networkId: 'n1' });
+    await client.placeAccessPoint({ ...c, serial: 'Q2XX-1', lat: 53.1, lng: -6.2, floorPlanId: 'fp1' });
+    assert.ok(urls.length >= 6, region);
+    for (const url of urls) assert.ok(url.startsWith(`https://${host}/`), `${region}: ${url}`);
+  }
 });

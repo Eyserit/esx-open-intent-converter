@@ -217,6 +217,15 @@ test('refuses an absolute http: URL even inside the region domain, without sendi
   assert.equal(calls.length, 0);
 });
 
+test('an upper-case HTTPS:// URL to another host is refused too', async () => {
+  const { request, calls } = setup([{ body: [] }]);
+  await assert.rejects(
+    request({ region: 'global', apiKey: 'k123' }, 'GET', 'HTTPS://evil.example/x'),
+    (err) => err.status === 502,
+  );
+  assert.equal(calls.length, 0);
+});
+
 test('stops after 3 redirects', async () => {
   const hop = { status: 307, headers: { Location: 'https://n149.meraki.com/api/v1/organizations' } };
   const { request, calls } = setup([hop, hop, hop, hop, { body: [] }]);
