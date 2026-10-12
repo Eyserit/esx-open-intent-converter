@@ -257,15 +257,15 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       refresh();
     });
     box.addEventListener('change', () => {
-      if (box.checked) unticked.delete(row.name);
-      else unticked.add(row.name);
+      if (box.checked) unticked.delete(index);
+      else unticked.add(index);
       refresh();
     });
     place.addEventListener('click', async () => {
       const floor = floors[index];
-      const placed = await placeFloor({ floor, start: placements.get(row.name) ?? null, near: lastPlacedCenter });
+      const placed = await placeFloor({ floor, start: placements.get(index) ?? null, near: lastPlacedCenter });
       if (!placed) return;
-      placements.set(row.name, placed);
+      placements.set(index, placed);
       lastPlacedCenter = placed.center;
       refresh();
     });
@@ -321,8 +321,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     );
   }
 
-  async function uploadFloor(floor, merakiName) {
-    const { center, rotation } = placements.get(floor.name);
+  async function uploadFloor({ floor, index, merakiName }) {
+    const { center, rotation } = placements.get(index);
     const { topLeft, topRight } = cornersFor({ center, widthM: floor.widthM, lengthM: floor.lengthM, rotation });
     try {
       const { action } = await api('api/floor-plans/upload', {
@@ -332,15 +332,16 @@ export function startMerakiFlow({ container, openintent, onExit }) {
         topLeftCorner: topLeft,
         topRightCorner: topRight,
       });
-      return { name: floor.name, outcome: action, label: UPLOAD_LABELS[action] };
+      return { index, outcome: action, label: UPLOAD_LABELS[action] };
     } catch (failure) {
-      return { name: floor.name, outcome: 'failed', label: `Failed: ${failure.message}` };
+      return { index, outcome: 'failed', label: `Failed: ${failure.message}` };
     }
   }
 
   async function uploadStep(rows) {
-    // Results keep the floor's own name, which is what unticked and placements are keyed by.
-    const chosen = floors.flatMap((floor, i) => (rows[i].ticked ? [{ floor, merakiName: rows[i].merakiName }] : []));
+    // Each upload keeps its floor's index, which is what placements and unticked are keyed by.
+    const chosen = floors.flatMap((floor, index) =>
+      (rows[index].ticked ? [{ floor, index, merakiName: rows[index].merakiName }] : []));
     const progress = detail('');
     const tags = chosen.map(() => el('span', { className: 'tag', textContent: 'Waiting' }));
     const list = el('ul', { className: 'floor-list' }, ...chosen.map(({ merakiName }, i) =>
@@ -348,11 +349,12 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     showStep(heading('Uploading to ', mono(network.name)), progress, list);
 
     const results = [];
-    for (const [i, { floor, merakiName }] of chosen.entries()) {
+    for (const [i, upload] of chosen.entries()) {
+      const { merakiName } = upload;
       progress.textContent = `${i} of ${chosen.length} floors done`;
       tags[i].textContent = 'Uploading…';
       announce(`Uploading ${merakiName}, ${i + 1} of ${chosen.length}.`);
-      const result = await uploadFloor(floor, merakiName);
+      const result = await uploadFloor(upload);
       tags[i].textContent = result.label;
       tags[i].classList.toggle('tag-placed', result.outcome !== 'failed');
       tags[i].classList.toggle('tag-failed', result.outcome === 'failed');
@@ -378,7 +380,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
         if (stale()) return;
         plans = found;
         // Floors that went up are left unticked, so only the failed ones are sent again.
-        for (const { name, outcome } of results) if (outcome !== 'failed') unticked.add(name);
+        for (const { index, outcome } of results) if (outcome !== 'failed') unticked.add(index);
         floorsStep();
       } catch (failure) {
         if (!stale()) error.textContent = failure.message;

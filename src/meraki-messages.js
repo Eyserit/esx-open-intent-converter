@@ -21,9 +21,9 @@ export function merakiNameProblem(name) {
   return null;
 }
 
-function rowFor(floor, merakiName, isRepeat, existingPlans, placements, unticked) {
+function rowFor(floor, index, merakiName, isRepeat, existingPlans, placements, unticked) {
   const base = {
-    name: floor.name, merakiName, nameProblem: merakiNameProblem(merakiName), placed: placements.has(floor.name),
+    name: floor.name, merakiName, nameProblem: merakiNameProblem(merakiName), placed: placements.has(index),
   };
   const blocked = (reason) => ({ ...base, action: 'blocked', reason, ticked: false });
   if (floor.problem) return blocked(floor.problem);
@@ -31,14 +31,15 @@ function rowFor(floor, merakiName, isRepeat, existingPlans, placements, unticked
   if (isRepeat) return blocked(`Two floors in this design are named “${merakiName}”.`);
   const match = matchFloorPlan(merakiName, existingPlans);
   if (match.action === 'blocked') return blocked(duplicatePlansMessage(merakiName, match.count));
-  return { ...base, action: match.action, reason: null, ticked: !unticked.has(floor.name) };
+  return { ...base, action: match.action, reason: null, ticked: !unticked.has(index) };
 }
 
-// names maps a floor's index to the name chosen for Meraki; a floor not in it gets the suggestion.
+// placements, unticked and names are keyed by floor index, so floors that share a name stay separate.
+// A floor missing from names gets the suggested Meraki name.
 export function floorRows(floors, existingPlans, placements, unticked, names = new Map()) {
   const chosen = floors.map((floor, i) => names.get(i) ?? suggestMerakiName(floor.name));
   return floors.map((floor, i) =>
-    rowFor(floor, chosen[i], chosen.indexOf(chosen[i]) < i, existingPlans, placements, unticked));
+    rowFor(floor, i, chosen[i], chosen.indexOf(chosen[i]) < i, existingPlans, placements, unticked));
 }
 
 export const ACTION_LABELS = { create: 'Create', update: 'Update existing', blocked: "Can't upload" };

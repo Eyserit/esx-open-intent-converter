@@ -5,10 +5,10 @@ import {
 } from '../src/meraki-messages.js';
 
 const floor = (name, problem = null) => ({ name, widthM: 10, lengthM: 20, image: null, problem });
-const placed = (...names) => new Map(names.map((name) => [name, { lat: 1, lng: 2 }]));
+const placed = (...indexes) => new Map(indexes.map((index) => [index, { lat: 1, lng: 2 }]));
 
 test('a fresh floor creates and is ticked', () => {
-  const [row] = floorRows([floor('Ground')], [], placed('Ground'), new Set());
+  const [row] = floorRows([floor('Ground')], [], placed(0), new Set());
   assert.deepEqual(row, {
     name: 'Ground', merakiName: 'Ground', nameProblem: null, action: 'create', reason: null, placed: true, ticked: true,
   });
@@ -32,14 +32,24 @@ test('two floors with the same source name can be given different Meraki names',
   assert.equal(b.merakiName, 'Ground 2');
 });
 
+test('placing or unticking one of two same-named floors leaves the other alone', () => {
+  const floors = [floor('Ground'), floor('Ground')];
+  const names = new Map([[1, 'Ground 2']]);
+  const [a, b] = floorRows(floors, [], new Map([[1, { lat: 1, lng: 2 }]]), new Set([0]), names);
+  assert.equal(a.placed, false);
+  assert.equal(a.ticked, false);
+  assert.equal(b.placed, true);
+  assert.equal(b.ticked, true);
+});
+
 test('renaming a floor to an existing plan updates it, and renaming it back creates', () => {
   const plans = [{ id: '1', name: 'Lobby' }];
-  const rowNamed = (name) => floorRows([floor('Ground')], plans, placed('Ground'), new Set(), new Map([[0, name]]))[0];
+  const rowNamed = (name) => floorRows([floor('Ground')], plans, placed(0), new Set(), new Map([[0, name]]))[0];
   assert.equal(rowNamed('Ground').action, 'create');
   assert.equal(rowNamed('Lobby').action, 'update');
   assert.equal(rowNamed('Ground').action, 'create');
   const duplicates = [{ id: '1', name: 'Lobby' }, { id: '2', name: 'Lobby' }];
-  const [blocked] = floorRows([floor('Ground')], duplicates, placed('Ground'), new Set(), new Map([[0, 'Lobby']]));
+  const [blocked] = floorRows([floor('Ground')], duplicates, placed(0), new Set(), new Map([[0, 'Lobby']]));
   assert.equal(blocked.reason, '2 floor plans named “Lobby” in this network: rename one in Dashboard.');
 });
 
@@ -69,21 +79,21 @@ test('upload waits for ticked floors to have valid names, after ticking and befo
 });
 
 test('an existing plan with the same name updates', () => {
-  const [row] = floorRows([floor('Ground')], [{ id: '1', name: 'Ground' }], placed('Ground'), new Set());
+  const [row] = floorRows([floor('Ground')], [{ id: '1', name: 'Ground' }], placed(0), new Set());
   assert.equal(row.action, 'update');
   assert.equal(row.ticked, true);
 });
 
 test('duplicate plans in the network block the floor', () => {
   const plans = [{ id: '1', name: 'Ground' }, { id: '2', name: 'Ground' }];
-  const [row] = floorRows([floor('Ground')], plans, placed('Ground'), new Set());
+  const [row] = floorRows([floor('Ground')], plans, placed(0), new Set());
   assert.equal(row.action, 'blocked');
   assert.equal(row.reason, '2 floor plans named “Ground” in this network: rename one in Dashboard.');
   assert.equal(row.ticked, false);
 });
 
 test('unticking a floor is respected', () => {
-  const [row] = floorRows([floor('Ground')], [], placed('Ground'), new Set(['Ground']));
+  const [row] = floorRows([floor('Ground')], [], placed(0), new Set([0]));
   assert.equal(row.action, 'create');
   assert.equal(row.ticked, false);
 });
@@ -111,14 +121,14 @@ test('finished card counts outcomes', () => {
 });
 
 test('a floor with a problem is blocked with its reason and unticked', () => {
-  const [row] = floorRows([floor('Ground', 'No floor plan image.')], [], placed('Ground'), new Set());
+  const [row] = floorRows([floor('Ground', 'No floor plan image.')], [], placed(0), new Set());
   assert.equal(row.action, 'blocked');
   assert.equal(row.reason, 'No floor plan image.');
   assert.equal(row.ticked, false);
 });
 
 test('a second floor with the same name in the design is blocked', () => {
-  const [first, second] = floorRows([floor('Ground'), floor('Ground')], [], placed('Ground'), new Set());
+  const [first, second] = floorRows([floor('Ground'), floor('Ground')], [], placed(0), new Set());
   assert.equal(first.action, 'create');
   assert.equal(second.action, 'blocked');
   assert.equal(second.reason, 'Two floors in this design are named “Ground”.');
