@@ -245,3 +245,11 @@ test('with the floors placed together, upload asks for the building to be placed
     { enabled: false, label: 'Upload 2 floors', hint: 'Place the building on the map first.' });
   assert.equal(uploadButton([row(true, false)]).hint, 'Place every ticked floor on the map first.');
 });
+
+test('with the floors placed together, ticking and names are asked for before the building placement', () => {
+  const row = (ticked, nameProblem) => ({ name: 'F', action: 'create', reason: null, placed: false, ticked, nameProblem });
+  const together = { together: true };
+  assert.equal(uploadButton([row(false, null)], together).hint, 'Tick at least one floor.');
+  assert.equal(uploadButton([row(true, 'Enter a name.')], together).hint, 'Fix the floor names first.');
+  assert.equal(uploadButton([row(true, null)], together).hint, 'Place the building on the map first.');
+});
