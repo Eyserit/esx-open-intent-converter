@@ -51,7 +51,8 @@ async function errorText(res) {
   }
 }
 
-export function createRequest({ fetch, sleep }) {
+// timeoutSignal is injectable so a test can see which timeout each call gets.
+export function createRequest({ fetch, sleep, timeoutSignal = (ms) => AbortSignal.timeout(ms) }) {
   return async function request({ region, apiKey, forbiddenMeansBadKey }, method, path, body) {
     const fail = (status, message) => new MerakiError(status, redact(message, apiKey));
     if (!Object.hasOwn(REGIONS, region)) throw fail(400, 'Unknown Meraki region.');
@@ -75,7 +76,7 @@ export function createRequest({ fetch, sleep }) {
           headers,
           body: body === undefined ? undefined : JSON.stringify(body),
           redirect: 'manual',
-          signal: AbortSignal.timeout(TIMEOUT_MS),
+          signal: timeoutSignal(TIMEOUT_MS),
         });
       } catch {
         // The thrown error's text can echo the URL, so it is dropped rather than relayed.
