@@ -230,3 +230,11 @@ test('with no ticked floor to use, the building outline is the largest floor tha
   const floors = sizedFloors([10, 10], [null, null, noSize], [40, 40, 'The floor image is missing.'], [20, 20]);
   assert.equal(buildingReferenceIndex(floors, floorRows(floors, [], new Map(), new Set([0, 3]))), 2);
 });
+
+test('floors of equal size give the building outline to the first, and with no size in metres there is none', () => {
+  const equal = sizedFloors([10, 20], [20, 10], [5, 5]);
+  assert.equal(buildingReferenceIndex(equal, floorRows(equal, [], new Map(), new Set())), 0);
+  const noSize = 'The floor has no size in metres.';
+  const unsized = sizedFloors([null, null, noSize], [null, null, noSize]);
+  assert.equal(buildingReferenceIndex(unsized, floorRows(unsized, [], new Map(), new Set())), null);
+});
