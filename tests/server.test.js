@@ -95,6 +95,24 @@ test('a foreign Host is refused on every path', async () => {
   });
 });
 
+test('a foreign Host is refused on an API POST even with a local Origin', async () => {
+  const called = [];
+  const routes = new Map([['/api/organizations', async (body) => {
+    called.push(body);
+    return { status: 200, json: [] };
+  }]]);
+  await withServer({ routes }, async ({ port }) => {
+    const res = await send(port, {
+      method: 'POST',
+      path: '/api/organizations',
+      headers: { Host: `evil.example:${port}`, Origin: `http://localhost:${port}` },
+      body: '{}',
+    });
+    assert.equal(res.status, 403);
+    assert.equal(called.length, 0);
+  });
+});
+
 test('an API POST from another origin is refused', async () => {
   await withServer({}, async ({ port, calls }) => {
     const res = await send(port, {
