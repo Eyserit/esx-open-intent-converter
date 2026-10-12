@@ -32,6 +32,7 @@ A design AP with no measured BSSIDs is matched by name only. Matched APs are pla
 | Name comparison | Trimmed, case ignored. Inner characters are compared exactly |
 | Ambiguity | A name matching 2+ Meraki APs is not a name match (it falls through to BSSID). A Meraki AP claimed by 2+ design APs is placed for none of them |
 | When | Automatically, straight after the floor uploads, then a results list |
+| Already-placed APs | Position check: an AP on a **different** floor plan is left alone; one on the floor plan just uploaded is moved only if it's more than 0.5 m from the design position (see Position check) |
 | BSSID source | Ekahau survey data. Open Intent input has none, so it matches by name only |
 
 ## Facts checked
@@ -100,6 +101,19 @@ For each design AP:
    - `<n> access points broadcast this AP's BSSIDs.` (several BSSID matches)
 4. **Claimed twice:** after step 3, any serial claimed by 2+ design APs → each becomes unmatched with `Matched the same Meraki access point as “<other design name>”.`
 
+### Position check (`placementAction`)
+
+A pure `placementAction(merakiAp, targetFloorPlanId, target, floorPlanNames)` in `src/ap-match.js`, run per matched AP before any PUT. `merakiAp` carries `floorPlanId`, `lat` and `lng` from the device list; `target` is the `{ lat, lng }` from `apLatLng`; `floorPlanNames` maps floor plan id → name (from the network's floor plans, already listed for the Floors step).
+
+| The Meraki AP is currently… | Action | Result row |
+|---|---|---|
+| On no floor plan (`floorPlanId` null or missing) | `place` | `Placed (by name)` / `Placed (by BSSID) as <Meraki name>` |
+| On the target floor plan, within **0.5 m** of `target` (same flat metres approximation as `geo.js`) | `none` | `Already in place` |
+| On the target floor plan, further than 0.5 m away, or with no lat/lng | `move` | `Moved (by name)` / `Moved (by BSSID) as <Meraki name>` |
+| On a **different** floor plan | `skip` | `Skipped: already placed on “<floor plan name>”, left as is.` (the id when the name is unknown) |
+
+`place` and `move` both send the same PUT. Only the result label differs.
+
 ## The flow
 
 1. **Floors:** the floors upload exactly as now.
@@ -115,10 +129,12 @@ For each design AP:
    - If listing fails, the phase ends with `Couldn't list the network's access points: <reason>.` and nothing is placed.
 3. **Finished:**
    - The existing floor summary.
-   - A line: `<p> access points placed, <u> not matched, <s> skipped.` (zero parts are left out; nothing is shown if there were no APs).
+   - A line: `<p> access points placed, <m> moved, <a> already in place, <u> not matched, <s> skipped.` (zero parts are left out; nothing is shown if there were no APs).
    - Failed placements are counted as `<f> failed`.
    - A `<details>` list "Access point results": one row per design AP with its name (Geist Mono) and its result:
      - `Placed (by name)` or `Placed (by BSSID) as <Meraki name>`;
+     - `Moved (by name)` or `Moved (by BSSID) as <Meraki name>`;
+     - `Already in place`;
      - `Not matched: <reason>`;
      - `Skipped: <reason>`;
      - `Failed: <Meraki's error>`.
@@ -129,7 +145,8 @@ For each design AP:
 - **`listAccessPoints`:**
   1. `GET /networks/{networkId}/devices` (wireless APs only).
   2. `GET /organizations/{organizationId}/wireless/ssids/statuses/byDevice?networkIds[]={networkId}&hideDisabled=false&perPage=500`, paged with the existing Link cap.
-  3. Join by serial: `{ serial, name: device.name ?? '', bssids: lower-case, de-duplicated }`. An AP that has no BSSID entry gets `bssids: []`.
+  3. Join by serial: `{ serial, name: device.name ?? '', floorPlanId: device.floorPlanId ?? null, lat: device.lat ?? null, lng: device.lng ?? null, bssids: lower-case, de-duplicated }`. An AP that has no BSSID entry gets `bssids: []`.
+  - The flow reuses the floor plan list it already fetched for the Floors step for `floorPlanNames`. If it was fetched before the uploads, it re-lists once after them, so the ids just created are known.
   - The route needs `organizationId` too. The flow already has it from the Network step.
 - **`placeAccessPoint`:** `PUT /devices/{encodeURIComponent(serial)}` with `{ lat, lng, floorPlanId }`. Returns `{ serial }`.
 - **Routes:**
@@ -157,7 +174,8 @@ All tests use `node:test` with no packages, test-first and one at a time.
   - an AP with no radios gets `[]`;
   - a predictive design with no survey files gets every `bssids` `[]`;
   - Open Intent input: meters coordinates, the pixel fallback and the y flip.
-- **`tests/ap-match.test.js`:**
+- **`tests/ap-match.test.js`** (`placementAction`): no floor plan → place; same floor plan within 0.5 m → none; same floor plan beyond 0.5 m or no lat/lng → move; a different floor plan → skip with its name, or the id when the name is unknown.
+- **`tests/ap-match.test.js`** (`matchAccessPoints`):
   - a name match, ignoring case and surrounding spaces;
   - inner differences don't match;
   - duplicate Meraki names fall through to BSSID;
@@ -181,7 +199,7 @@ All tests use `node:test` with no packages, test-first and one at a time.
 
 ## Done means
 
-- Floors upload as before, and eligible APs are then placed automatically, by name or BSSID, at their design positions.
+- Floors upload as before, and eligible APs are then placed automatically, by name or BSSID, at their design positions. An AP already on another floor plan is never moved, and one already in place isn't re-sent.
 - The Finished screen reports every design AP's outcome.
 - All tests pass, including the existing ones and the `esx2oi.py` parity checks. `npm run check` is clean.
 - README and HANDOFF are updated: what matching does, BSSID comes from survey data, the 403 note, and the local survey check.
