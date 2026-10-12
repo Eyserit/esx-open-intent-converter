@@ -31,7 +31,7 @@ Then open http://localhost:8000. This serves the converter only. For the Meraki 
 
 Run `npm start` and open http://localhost:8000. Set `PORT` to use another port. It needs Node 22 or later. The public site has no Meraki step.
 
-After a conversion, the Done card offers "Send to Meraki Dashboard". The flow:
+After a conversion, the Done card offers "Send to Meraki". The flow:
 
 1. Paste a Dashboard API key and pick the region.
 2. Pick the organisation and the wireless network.

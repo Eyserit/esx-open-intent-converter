@@ -48,7 +48,7 @@ npm run test:sample                  # local only: parity and round trip on the 
 | `src/antennas.js`, `src/antenna-library.json` | Real antenna patterns by vendor/model/band, or a generated flat "generic omni" pattern. |
 | `src/messages.js` | All card copy (pure, tested). |
 | `src/browser-images.js` | Canvas-based decode / PNG encode / resize. Node tests use `tests/helpers/node-images.js` instead. |
-| `server/start.js`, `server/server.js` | `npm start`. Static files plus POST routes, bound to 127.0.0.1 only. 100 MB body cap. |
+| `server/start.js`, `server/server.js` | `npm start`. Static files plus POST routes, bound to 127.0.0.1 only. 140 MB request body cap (a 100 MB file base64-encoded fits); the 100 MB file cap is in `src/convert.js` and `app.js`. |
 | `server/meraki-routes.js` | The `/api/...` routes (organisations, networks, floor plans, upload). Pure validation, then the client. |
 | `server/meraki-client.js`, `server/meraki-request.js` | Calls to the Dashboard API: paging, retries on rate limits, upload. The relay refuses redirects and paging URLs outside the region's https domain. |
 | `meraki-flow.js` | Browser side of the Send to Meraki steps (key, network, floors, map, Uploading, Finished). Uploading has no Back, by design. Finished has Disconnect, which returns to the Done card with the download kept. |
@@ -101,7 +101,6 @@ Design docs: `docs/superpowers/specs/2026-10-11-wireless-design-converter-design
 5. **A zipped folder** (design files inside a subfolder, as macOS "Compress" makes) is reported as not supported, because detection only looks at the top level.
 6. **More AP models:** `node tools/add-antennas.mjs "<path to .esx>"` copies only antenna patterns into the library. Check `git diff` before committing; the library is public.
 7. Minor: `defaultAntennas` order is TWO, FIVE, SIX (Ekahau accepted it); case variants of a vendor name create duplicate antenna types (harmless).
-
 8. **Meraki upload gaps:** paging has no page cap; the Nominatim response isn't validated beyond `ok`; the fake server's 401 always says "(Global)".
 
 ## Recent history
