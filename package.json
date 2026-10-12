@@ -7,6 +7,7 @@
     "start": "node server/start.js",
     "test": "node --test \"tests/**/*.test.js\"",
     "test:sample": "node --test local-checks/",
+    "test:survey": "node --test local-checks/survey.test.js",
     "check": "sh -c 'status=0; for f in $(find . \\( -path ./.venv -o -path ./node_modules -o -path ./.claude \\) -prune -o \\( -name \"*.js\" -o -name \"*.mjs\" \\) -print); do node --check \"$f\" || status=1; done; exit $status'"
   }
 }
