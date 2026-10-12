@@ -4,7 +4,7 @@ import { cornersFor } from './src/geo.js';
 import { REGIONS } from './src/meraki-regions.js';
 import {
   ACTION_LABELS, GENERIC, NO_ORGANISATIONS, NO_WIRELESS, SERVER_STOPPED, buildingReferenceIndex, effectivePlacements,
-  apResultLabel, apSummary, finishedCard, floorRows, uploadButton,
+  apListError, apResultLabel, apSummary, finishedCard, floorRows, uploadButton,
 } from './src/meraki-messages.js';
 import { runApPhase } from './src/ap-phase.js';
 import { placeFloor } from './map-place.js';
@@ -426,20 +426,24 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       : [[index, { floorPlanId, placement: placed.get(index) }]])));
     let apOutcome = { results: [], listError: null };
     if (openintent.designAps.length > 0) {
-      apOutcome = await runApPhase({
-        designAps: openintent.designAps,
-        floors,
-        uploaded,
-        earlier: uploadedEarlier,
-        listAccessPoints: () => api('api/access-points', { organizationId, networkId: network.id }),
-        placeAccessPoint: (body) => api('api/access-points/place', body),
-        onProgress: (done, total) => {
-          const text = `Placing access points: ${done} of ${total}`;
-          apProgress.textContent = text;
-          // Announced at the start and the end only, not for every AP.
-          if (done === 0 || done === total) announce(text);
-        },
-      });
+      try {
+        apOutcome = await runApPhase({
+          designAps: openintent.designAps,
+          floors,
+          uploaded,
+          earlier: uploadedEarlier,
+          listAccessPoints: () => api('api/access-points', { organizationId, networkId: network.id }),
+          placeAccessPoint: (body) => api('api/access-points/place', body),
+          onProgress: (done, total) => {
+            const text = `Placing access points: ${done} of ${total}`;
+            apProgress.textContent = text;
+            // Announced at the start and the end only, not for every AP.
+            if (done === 0 || done === total) announce(text);
+          },
+        });
+      } catch (error) {
+        apOutcome = { results: [], listError: apListError(error.message) };
+      }
     }
     for (const index of uploaded.keys()) uploadedEarlier.add(index);
     finishedStep(results, list, apOutcome);
