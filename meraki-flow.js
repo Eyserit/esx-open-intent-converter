@@ -32,7 +32,7 @@ async function api(path, body) {
   } catch {
     throw new Error(GENERIC);
   }
-  if (!response.ok) throw new Error(json.error ?? GENERIC);
+  if (!response.ok) throw new Error(json?.error ?? GENERIC);
   return json;
 }
 
@@ -77,6 +77,15 @@ function stepper(index) {
     if (i === index) item.setAttribute('aria-current', 'step');
     return item;
   }));
+}
+
+// The URL comes from Meraki via the relay, so only an https link is trusted as an href.
+function isHttps(url) {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function doneGlyph() {
@@ -333,9 +342,11 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   function finishedStep(results, list) {
     const { title, detail: counts } = finishedCard({ networkName: network.name, results });
     const failed = results.some(({ outcome }) => outcome === 'failed');
-    const dashboard = el('a', {
-      className: 'pill pill-primary', href: network.url, target: '_blank', rel: 'noopener', textContent: 'Open in Dashboard',
-    });
+    const dashboard = isHttps(network.url)
+      ? [el('a', {
+        className: 'pill pill-primary', href: network.url, target: '_blank', rel: 'noopener', textContent: 'Open in Dashboard',
+      })]
+      : [];
     const backToFloors = pill('Back to floors', async () => {
       const stale = ticket();
       error.textContent = '';
@@ -357,7 +368,12 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       heading(title),
       detail(counts),
       ...(failed ? [list] : []),
-      actions(dashboard, ...(failed ? [backToFloors] : []), pill('Convert another', convertAnother)),
+      actions(
+        ...dashboard,
+        ...(failed ? [backToFloors] : []),
+        pill('Disconnect', exit),
+        pill('Convert another', convertAnother),
+      ),
       error,
     );
     announce(`${title}. ${counts}`);
