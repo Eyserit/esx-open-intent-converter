@@ -33,6 +33,17 @@ test('each region calls its own host with a Bearer key', async () => {
   }
 });
 
+test('GETs time out after 120 s, and POST and PUT after 600 s for large images', async () => {
+  for (const [method, expected] of [['GET', 120000], ['POST', 600000], ['PUT', 600000]]) {
+    const { fetch } = fakeFetch([{ body: {} }]);
+    const timeouts = [];
+    const timeoutSignal = (ms) => { timeouts.push(ms); return new AbortController().signal; };
+    const request = createRequest({ fetch, sleep: async () => {}, timeoutSignal });
+    await request({ region: 'global', apiKey: 'k123' }, method, '/x', method === 'GET' ? undefined : {});
+    assert.deepEqual(timeouts, [expected], method);
+  }
+});
+
 test('an unknown region is rejected before any request', async () => {
   const { request, calls } = setup([]);
   await assert.rejects(

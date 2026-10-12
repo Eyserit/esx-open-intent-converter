@@ -1,6 +1,8 @@
 import { REGIONS } from '../src/meraki-regions.js';
 
 const TIMEOUT_MS = 120000;
+// Uploads carry a whole floor image, which can take minutes on a slow link.
+const WRITE_TIMEOUT_MS = 600000;
 const MAX_RETRY_AFTER_S = 60;
 const MAX_RETRIES = 3;
 const MAX_REDIRECTS = 3;
@@ -76,7 +78,7 @@ export function createRequest({ fetch, sleep, timeoutSignal = (ms) => AbortSigna
           headers,
           body: body === undefined ? undefined : JSON.stringify(body),
           redirect: 'manual',
-          signal: timeoutSignal(TIMEOUT_MS),
+          signal: timeoutSignal(method === 'GET' ? TIMEOUT_MS : WRITE_TIMEOUT_MS),
         });
       } catch {
         // The thrown error's text can echo the URL, so it is dropped rather than relayed.
