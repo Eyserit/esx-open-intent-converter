@@ -9,7 +9,19 @@ const placed = (...names) => new Map(names.map((name) => [name, { lat: 1, lng: 2
 
 test('a fresh floor creates and is ticked', () => {
   const [row] = floorRows([floor('Ground')], [], placed('Ground'), new Set());
-  assert.deepEqual(row, { name: 'Ground', action: 'create', reason: null, placed: true, ticked: true });
+  assert.deepEqual(row, {
+    name: 'Ground', merakiName: 'Ground', nameProblem: null, action: 'create', reason: null, placed: true, ticked: true,
+  });
+});
+
+test('a floor without a chosen name uses the suggestion, and a chosen name is checked', () => {
+  const floors = [floor('Level 1 (East)'), floor('Ground')];
+  const names = new Map([['Ground', 'Ground!']]);
+  const [suggested, chosen] = floorRows(floors, [], placed(), new Set(), names);
+  assert.equal(suggested.merakiName, 'Level 1 East');
+  assert.equal(suggested.nameProblem, null);
+  assert.equal(chosen.merakiName, 'Ground!');
+  assert.equal(chosen.nameProblem, 'Use only letters, numbers, spaces, - and _.');
 });
 
 test('an existing plan with the same name updates', () => {

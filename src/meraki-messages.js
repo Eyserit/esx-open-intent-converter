@@ -21,8 +21,10 @@ export function merakiNameProblem(name) {
   return null;
 }
 
-function rowFor(floor, isRepeat, existingPlans, placements, unticked) {
-  const base = { name: floor.name, placed: placements.has(floor.name) };
+function rowFor(floor, merakiName, isRepeat, existingPlans, placements, unticked) {
+  const base = {
+    name: floor.name, merakiName, nameProblem: merakiNameProblem(merakiName), placed: placements.has(floor.name),
+  };
   const blocked = (reason) => ({ ...base, action: 'blocked', reason, ticked: false });
   if (floor.problem) return blocked(floor.problem);
   // Two floors with one name would both target the same Meraki plan.
@@ -32,9 +34,16 @@ function rowFor(floor, isRepeat, existingPlans, placements, unticked) {
   return { ...base, action: match.action, reason: null, ticked: !unticked.has(floor.name) };
 }
 
-export function floorRows(floors, existingPlans, placements, unticked) {
-  return floors.map((floor, i) =>
-    rowFor(floor, floors.findIndex((f) => f.name === floor.name) < i, existingPlans, placements, unticked));
+// names maps a floor's name to the name chosen for Meraki; a floor not in it gets the suggestion.
+export function floorRows(floors, existingPlans, placements, unticked, names = new Map()) {
+  return floors.map((floor, i) => rowFor(
+    floor,
+    names.get(floor.name) ?? suggestMerakiName(floor.name),
+    floors.findIndex((f) => f.name === floor.name) < i,
+    existingPlans,
+    placements,
+    unticked,
+  ));
 }
 
 export const ACTION_LABELS = { create: 'Create', update: 'Update existing', blocked: "Can't upload" };
