@@ -25,13 +25,13 @@ function nextPageUrl(linkHeader, domain) {
 export function createMerakiClient({ fetch, sleep }) {
   const request = createRequest({ fetch, sleep });
 
-  async function getAllPages(ctx, path) {
+  async function getAllPages(ctx, path, itemsOf = (json) => json) {
     const items = [];
     let target = path;
     for (let page = 0; target; page++) {
       if (page === MAX_PAGES) throw new MerakiError(502, GENERIC_MESSAGE);
       const { json, headers } = await request(ctx, 'GET', target);
-      items.push(...json);
+      items.push(...itemsOf(json));
       target = nextPageUrl(headers.get('Link'), REGIONS[ctx.region].domain);
     }
     return items;
