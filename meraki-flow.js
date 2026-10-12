@@ -424,6 +424,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     const uploaded = new Map(results.flatMap(({ index, outcome, floorPlanId }) => (outcome === 'failed'
       ? []
       : [[index, { floorPlanId, placement: placed.get(index) }]])));
+    progress.textContent = `${chosen.length} of ${chosen.length} floors done`;
     let apOutcome = { results: [], listError: null };
     if (openintent.designAps.length > 0) {
       try {
