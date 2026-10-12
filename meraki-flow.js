@@ -238,7 +238,10 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       type: 'checkbox', id: `meraki-floor-${index}`, checked: row.ticked, disabled: row.action === 'blocked',
     });
     const what = row.reason ? `${ACTION_LABELS[row.action]} · ${row.reason}` : ACTION_LABELS[row.action];
-    const label = el('label', { className: 'floor-name', htmlFor: box.id }, mono(row.name), el('small', { textContent: what }));
+    // The hidden comma keeps the name and the action apart when the label is read as one string.
+    const separator = el('span', { className: 'visually-hidden', textContent: ', ' });
+    const label = el('label', { className: 'floor-name', htmlFor: box.id },
+      mono(row.name), separator, el('small', { textContent: what }));
     const item = el('li', { className: 'floor-row' }, box, label);
     if (row.action === 'blocked') return { item, update() {} };
 
