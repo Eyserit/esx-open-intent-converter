@@ -1,11 +1,14 @@
 // Works out the Floors step's rows, the upload button and the flow's fixed copy, kept pure so it can be tested.
 import { matchFloorPlan, duplicatePlansMessage } from './floor-plan-match.js';
 
-// Meraki only accepts these characters in a floor plan name.
+// Meraki only accepts these characters in a floor plan name, up to 25 of them.
 const DISALLOWED_RUN = /[^\p{L}\p{N} _-]+/gu;
+const MAX_NAME_LENGTH = 25;
 
 export function suggestMerakiName(floorName) {
-  const suggestion = floorName.replace(DISALLOWED_RUN, ' ').replace(/ +/g, ' ').trim();
+  const cleaned = floorName.replace(DISALLOWED_RUN, ' ').replace(/ +/g, ' ').trim();
+  // Array.from splits by code point, so a letter outside the BMP is never cut in half.
+  const suggestion = Array.from(cleaned).slice(0, MAX_NAME_LENGTH).join('').trim();
   return suggestion || 'Floor';
 }
 

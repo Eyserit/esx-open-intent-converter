@@ -77,3 +77,9 @@ test('a suggested Meraki name swaps disallowed characters for spaces', () => {
 test('a name with no allowed characters is suggested as Floor', () => {
   assert.equal(suggestMerakiName('(*) – !'), 'Floor');
 });
+
+test('a suggested Meraki name is cut to 25 characters and trimmed again', () => {
+  assert.equal(suggestMerakiName('Basement Level Two North Annex'), 'Basement Level Two North');
+  // Astral letters are two UTF-16 units each, so the cut must count code points.
+  assert.equal(suggestMerakiName('𝐀'.repeat(26)), '𝐀'.repeat(25));
+});
