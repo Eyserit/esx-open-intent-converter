@@ -1,8 +1,33 @@
 # Ekahau .esx and Open Intent converter
 
-A single web page that converts between an Ekahau `.esx` design and an Open Intent `.zip`.
+A single web page that converts between an Ekahau `.esx` design and an Open Intent `.zip`. Run locally, it can also upload floor plans and place access points in a Cisco Meraki Dashboard network.
 
-Live site: https://eyserit.github.io/esx-open-intent-converter/
+Live site (conversion only): https://eyserit.github.io/esx-open-intent-converter/
+
+## Quick start: run it locally (conversion and Meraki upload)
+
+You need [Node.js](https://nodejs.org) 22 or later. Check with `node --version`. There are no packages to install.
+
+1. Get the code. Either clone it:
+
+   ```sh
+   git clone https://github.com/Eyserit/esx-open-intent-converter.git
+   cd esx-open-intent-converter
+   ```
+
+   Or click **Code → Download ZIP** on GitHub, unzip it, and `cd` into the unzipped folder (`esx-open-intent-converter-main`).
+
+2. Start it:
+
+   ```sh
+   npm start
+   ```
+
+3. Open http://localhost:8000. Leave the terminal open while you use it, and press Ctrl+C to stop.
+
+If port 8000 is busy, use `PORT=8001 npm start` and open http://localhost:8001. To update a clone later, run `git pull`.
+
+Step-by-step instructions for macOS and Windows, including installing Node.js and Git, are in [README.txt](README.txt).
 
 ## What the page does
 
@@ -19,13 +44,15 @@ Floor plans larger than 8000 px on their longest side are shrunk to 8000 px, and
 
 Anything else is rejected with an explicit error rather than guessed at.
 
-## Run it locally
+## Converter only, without Node
+
+Any static file server works, for example:
 
 ```sh
 python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000. This serves the converter only. For the Meraki upload, use `npm start` (below).
+This serves the converter only. The Meraki upload needs `npm start` (see Quick start).
 
 ## Send floor plans to Meraki (local only)
 
