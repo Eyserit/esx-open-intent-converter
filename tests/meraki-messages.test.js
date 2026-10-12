@@ -197,3 +197,10 @@ test('with the floors placed together, every floor uses the building placement',
   assert.deepEqual(rows.map((row) => row.placed), [true, true, true]);
   assert.equal(placements.get(2), spot);
 });
+
+test('with the floors placed together and no building placement, no floor is placed, even one placed alone', () => {
+  const floors = [floor('Ground'), floor('First')];
+  const placements = effectivePlacements(new Map([[0, spot]]), { together: true, placement: null, count: floors.length });
+  const rows = floorRows(floors, [], placements, new Set());
+  assert.deepEqual(rows.map((row) => row.placed), [false, false]);
+});
