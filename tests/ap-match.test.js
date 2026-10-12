@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchAccessPoints } from '../src/ap-match.js';
+import { matchAccessPoints, placementAction } from '../src/ap-match.js';
+import { offsetBy } from '../src/geo.js';
 
 const design = (name, bssids = []) => ({ name, floorName: 'Level 1', xM: 1, yM: 1, mine: true, bssids });
 const meraki = (serial, name, bssids = []) => ({ serial, name, floorPlanId: null, lat: null, lng: null, bssids });
@@ -59,4 +60,43 @@ test('one Meraki AP claimed by two design APs is placed for neither', () => {
     { serial: null, reason: 'Matched the same Meraki access point as “AP-2”.' },
     { serial: null, reason: 'Matched the same Meraki access point as “AP-1”.' },
   ]);
+});
+
+const target = { lat: 53.35, lng: -6.26 };
+const placed = (floorPlanId, position = target) => ({ ...meraki('Q1', 'AP-1'), floorPlanId, ...position });
+const names = new Map([['fp1', 'Level 1'], ['fp2', 'Level 2']]);
+
+test('an AP on no floor plan is placed', () => {
+  assert.deepEqual(placementAction(placed(null, { lat: null, lng: null }), 'fp1', target, names), { action: 'place' });
+});
+
+test('on the target plan beyond 0.5 m it moves', () => {
+  assert.deepEqual(placementAction(placed('fp1', offsetBy(target, 0, 0.6)), 'fp1', target, names), { action: 'move' });
+});
+
+test('on the target plan within 0.5 m nothing is sent', () => {
+  assert.deepEqual(placementAction(placed('fp1', offsetBy(target, 0.3, 0.3)), 'fp1', target, names), { action: 'none' });
+});
+
+test('on the target plan with no position it moves', () => {
+  assert.deepEqual(placementAction(placed('fp1', { lat: null, lng: null }), 'fp1', target, names), { action: 'move' });
+});
+
+test('a missing position is never read as 0, 0', () => {
+  const origin = { lat: 0, lng: 0 };
+  assert.deepEqual(placementAction(placed('fp1', { lat: null, lng: null }), 'fp1', origin, names), { action: 'move' });
+});
+
+test('on another plan it is skipped with that plan\'s name', () => {
+  assert.deepEqual(placementAction(placed('fp2'), 'fp1', target, names), {
+    action: 'skip',
+    reason: 'already placed on “Level 2”, left as is.',
+  });
+});
+
+test('on an unknown plan the id stands in for its name', () => {
+  assert.deepEqual(placementAction(placed('fp9'), 'fp1', target, names), {
+    action: 'skip',
+    reason: 'already placed on “fp9”, left as is.',
+  });
 });

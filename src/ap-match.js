@@ -1,3 +1,6 @@
+import { distanceM } from './geo.js';
+
+const IN_PLACE_M = 0.5;
 const key = (name) => name.trim().toLowerCase();
 
 function matchByName(design, merakiAps) {
@@ -43,4 +46,14 @@ function releaseSharedSerials(matches, designAps) {
 export function matchAccessPoints(designAps, merakiAps) {
   const matches = designAps.map((design) => matchOne(design, merakiAps));
   return releaseSharedSerials(matches, designAps);
+}
+
+export function placementAction(merakiAp, targetFloorPlanId, target, floorPlanNames) {
+  const { floorPlanId } = merakiAp;
+  if (floorPlanId == null) return { action: 'place' };
+  if (floorPlanId !== targetFloorPlanId) {
+    return { action: 'skip', reason: `already placed on “${floorPlanNames.get(floorPlanId) ?? floorPlanId}”, left as is.` };
+  }
+  if (!Number.isFinite(merakiAp.lat) || !Number.isFinite(merakiAp.lng)) return { action: 'move' };
+  return distanceM(merakiAp, target) <= IN_PLACE_M ? { action: 'none' } : { action: 'move' };
 }
