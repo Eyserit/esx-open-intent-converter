@@ -62,8 +62,8 @@ export function createRequest({ fetch, sleep, timeoutSignal = (ms) => AbortSigna
     const headers = { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     let url = `https://${host}/api/v1${path}`;
-    if (path.startsWith('https://')) {
-      // An absolute URL (a paging link) would otherwise carry the key to any host.
+    if (/^[a-z][a-z\d+.-]*:/i.test(path)) {
+      // An absolute URL (a paging link) would otherwise carry the key to any host, or over plain http.
       const absolute = parseUrl(path);
       if (!absolute || !isWithinDomain(absolute, domain)) throw fail(502, GENERIC_MESSAGE);
       url = absolute.href;

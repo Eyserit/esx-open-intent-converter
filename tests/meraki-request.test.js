@@ -208,6 +208,15 @@ test('refuses an absolute URL outside the region domain without sending anything
   assert.equal(calls.length, 0);
 });
 
+test('refuses an absolute http: URL even inside the region domain, without sending anything', async () => {
+  const { request, calls } = setup([{ body: [] }]);
+  await assert.rejects(
+    request({ region: 'global', apiKey: 'k123' }, 'GET', 'http://n149.meraki.com/api/v1/organizations'),
+    (err) => err.status === 502 && err.message === 'Something went wrong talking to Meraki.',
+  );
+  assert.equal(calls.length, 0);
+});
+
 test('stops after 3 redirects', async () => {
   const hop = { status: 307, headers: { Location: 'https://n149.meraki.com/api/v1/organizations' } };
   const { request, calls } = setup([hop, hop, hop, hop, { body: [] }]);
