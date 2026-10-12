@@ -5,7 +5,8 @@ import { matchFloorPlan, duplicatePlansMessage } from './floor-plan-match.js';
 const DISALLOWED_RUN = /[^\p{L}\p{N} _-]+/gu;
 
 export function suggestMerakiName(floorName) {
-  return floorName.replace(DISALLOWED_RUN, ' ').replace(/ +/g, ' ').trim();
+  const suggestion = floorName.replace(DISALLOWED_RUN, ' ').replace(/ +/g, ' ').trim();
+  return suggestion || 'Floor';
 }
 
 function rowFor(floor, isRepeat, existingPlans, placements, unticked) {

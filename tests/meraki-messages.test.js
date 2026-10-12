@@ -73,3 +73,7 @@ test('a suggested Meraki name swaps disallowed characters for spaces', () => {
   assert.equal(suggestMerakiName('Level 1 (East Wing) – Offices'), 'Level 1 East Wing Offices');
   assert.equal(suggestMerakiName('Ground'), 'Ground');
 });
+
+test('a name with no allowed characters is suggested as Floor', () => {
+  assert.equal(suggestMerakiName('(*) – !'), 'Floor');
+});
