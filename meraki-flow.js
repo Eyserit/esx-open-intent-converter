@@ -140,7 +140,11 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     apiKey = null;
     const regionSelect = el('select', {}, ...Object.entries(REGIONS).map(([value, { label, host }]) =>
       option(value, `${label} · ${host}`, value === region)));
-    const keyInput = el('input', { type: 'password', autocomplete: 'off', spellcheck: false, required: true });
+    // A masked text field, not a password field, so browsers don't offer to save the key as a login.
+    const keyInput = el('input', {
+      type: 'text', name: 'meraki-connect', className: 'masked', autocomplete: 'off', autocapitalize: 'off',
+      spellcheck: false, required: true,
+    });
     const error = errorLine('meraki-key-error', keyInput);
     const form = el('form', { className: 'meraki-form' },
       field('meraki-region', 'Region', regionSelect),
