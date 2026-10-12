@@ -192,6 +192,20 @@ test('BSSID pages follow Link', async () => {
   assert.deepEqual(accessPoints.map((ap) => ap.bssids), [['aa:00:00:00:00:01'], ['aa:00:00:00:00:02']]);
 });
 
+test('malformed BSSID entries are ignored and the valid BSSIDs still list', async () => {
+  const { client } = setup([
+    { body: [{ serial: 'Q1', name: 'AP-1' }, { serial: 'Q2', name: 'AP-2' }] },
+    { body: [] },
+    {
+      body: { items: [{ serial: 'Q1', basicServiceSets: null }, { serial: 'Q2', basicServiceSets: [{ bssid: null }, { bssid: 7 }, { bssid: 'AA:00:00:00:00:02' }] }] },
+      headers: { Link: '<https://n1.meraki.com/api/v1/organizations/O%2F1/wireless/ssids/statuses/byDevice?startingAfter=Q2>; rel=next' },
+    },
+    { body: {} },
+  ]);
+  const { accessPoints } = await client.listAccessPoints({ ...ctx, organizationId: 'O/1', networkId: 'N_2' });
+  assert.deepEqual(accessPoints.map((ap) => ap.bssids), [[], ['aa:00:00:00:00:02']]);
+});
+
 test('placing an AP PUTs lat, lng and floorPlanId to the encoded serial', async () => {
   const { client, calls } = setup([{ body: { serial: 'Q2XX/1', lat: 53.1 } }]);
   const result = await client.placeAccessPoint({ ...ctx, serial: 'Q2XX/1', lat: 53.1, lng: -6.2, floorPlanId: 'fp1' });

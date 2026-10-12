@@ -77,7 +77,7 @@ export function createMerakiClient({ fetch, sleep }) {
     const statuses = await getAllPages(
       ctx,
       `/organizations/${o}/wireless/ssids/statuses/byDevice?networkIds[]=${n}&hideDisabled=false&perPage=500`,
-      (json) => json.items,
+      (json) => json.items ?? [],
     );
 
     const planBySerial = new Map();
@@ -85,9 +85,11 @@ export function createMerakiClient({ fetch, sleep }) {
       for (const { serial } of plan.devices ?? []) planBySerial.set(serial, plan.floorPlanId);
     }
     const bssidsBySerial = new Map();
-    for (const { serial, basicServiceSets = [] } of statuses) {
+    for (const { serial, basicServiceSets } of statuses) {
       const found = bssidsBySerial.get(serial) ?? new Set();
-      for (const { bssid } of basicServiceSets) found.add(bssid.toLowerCase());
+      for (const { bssid } of basicServiceSets ?? []) {
+        if (typeof bssid === 'string') found.add(bssid.toLowerCase());
+      }
       bssidsBySerial.set(serial, found);
     }
 
