@@ -25,7 +25,7 @@ A single static web page that converts one dropped file between an Ekahau `.esx`
 python3 -m http.server 8000          # converter only, then open http://localhost:8000
 npm start                            # converter plus the Meraki relay on http://localhost:8000 (PORT overrides)
 PORT=8123 node tools/fake-meraki.mjs # page against a fake Meraki, API key test-key
-npm test                             # 282 tests, node:test, no packages (Node 22+, built on Node 26)
+npm test                             # 285 tests, node:test, no packages (Node 22+, built on Node 26)
 npm run check                        # node --check on every .js/.mjs
 npm run test:sample                  # local only: parity and round trip on the private sample
 npm run test:survey                  # local only: BSSIDs read from the private survey sample (counts only)
