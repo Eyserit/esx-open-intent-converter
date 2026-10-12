@@ -99,7 +99,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   const floors = listFloors(openintent.design, openintent.images);
   const placements = new Map();
   const unticked = new Set();
-  // Names typed for Meraki, by the floor's own name; kept so Back to floors shows them again.
+  // Names typed for Meraki, by floor index; kept so Back to floors shows them again.
   const names = new Map();
   let lastPlacedCenter = null;
   let organizations = [];
@@ -253,7 +253,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     const item = el('li', { className: 'floor-row' }, box, label, tag, place, nameField);
 
     nameInput.addEventListener('input', () => {
-      names.set(row.name, nameInput.value);
+      names.set(index, nameInput.value);
       refresh();
     });
     box.addEventListener('change', () => {

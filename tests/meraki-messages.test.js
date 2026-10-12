@@ -16,7 +16,7 @@ test('a fresh floor creates and is ticked', () => {
 
 test('a floor without a chosen name uses the suggestion, and a chosen name is checked', () => {
   const floors = [floor('Level 1 (East)'), floor('Ground')];
-  const names = new Map([['Ground', 'Ground!']]);
+  const names = new Map([[1, 'Ground!']]);
   const [suggested, chosen] = floorRows(floors, [], placed(), new Set(), names);
   assert.equal(suggested.merakiName, 'Level 1 East');
   assert.equal(suggested.nameProblem, null);
@@ -24,20 +24,28 @@ test('a floor without a chosen name uses the suggestion, and a chosen name is ch
   assert.equal(chosen.nameProblem, 'Use only letters, numbers, spaces, - and _.');
 });
 
+test('two floors with the same source name can be given different Meraki names', () => {
+  const [a, b] = floorRows([floor('Ground'), floor('Ground')], [], placed(), new Set(), new Map([[1, 'Ground 2']]));
+  assert.equal(a.action, 'create');
+  assert.equal(a.merakiName, 'Ground');
+  assert.equal(b.action, 'create');
+  assert.equal(b.merakiName, 'Ground 2');
+});
+
 test('renaming a floor to an existing plan updates it, and renaming it back creates', () => {
   const plans = [{ id: '1', name: 'Lobby' }];
-  const rowNamed = (name) => floorRows([floor('Ground')], plans, placed('Ground'), new Set(), new Map([['Ground', name]]))[0];
+  const rowNamed = (name) => floorRows([floor('Ground')], plans, placed('Ground'), new Set(), new Map([[0, name]]))[0];
   assert.equal(rowNamed('Ground').action, 'create');
   assert.equal(rowNamed('Lobby').action, 'update');
   assert.equal(rowNamed('Ground').action, 'create');
   const duplicates = [{ id: '1', name: 'Lobby' }, { id: '2', name: 'Lobby' }];
-  const [blocked] = floorRows([floor('Ground')], duplicates, placed('Ground'), new Set(), new Map([['Ground', 'Lobby']]));
+  const [blocked] = floorRows([floor('Ground')], duplicates, placed('Ground'), new Set(), new Map([[0, 'Lobby']]));
   assert.equal(blocked.reason, '2 floor plans named “Lobby” in this network: rename one in Dashboard.');
 });
 
 test('floors given the same Meraki name block the second and later ones', () => {
   const floors = [floor('Ground'), floor('First'), floor('Second')];
-  const names = new Map([['First', 'Ground'], ['Second', 'Ground']]);
+  const names = new Map([[1, 'Ground'], [2, 'Ground']]);
   const [ground, first, second] = floorRows(floors, [], placed(), new Set(), names);
   assert.equal(ground.action, 'create');
   assert.equal(first.action, 'blocked');
