@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cardFor } from '../src/messages.js';
+import { cardFor, headlineFor } from '../src/messages.js';
 import { ConversionError, NotSupportedError } from '../src/errors.js';
 
 test('a file that is neither format gets the calm Not supported card', () => {
@@ -76,4 +76,15 @@ test('dragging a file over the page says release to convert', () => {
 
 test('a file over the cap gets the too-large card', () => {
   assert.deepEqual(cardFor({ type: 'too-large' }), { state: 'unsupported', title: 'This file is over 100 MB.' });
+});
+
+test('the headline offers Meraki upload only when the local server is running', () => {
+  assert.deepEqual(headlineFor({ meraki: true }), {
+    lead: 'Upload Wi-Fi designs or validations',
+    quiet: 'to the Meraki Dashboard.',
+  });
+  assert.deepEqual(headlineFor({ meraki: false }), {
+    lead: 'Move Wi-Fi designs',
+    quiet: 'between Ekahau and Open Intent.',
+  });
 });

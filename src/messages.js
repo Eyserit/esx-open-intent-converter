@@ -42,3 +42,10 @@ export function cardFor(event) {
       return { state: 'unsupported', title: errorTitle(event.error, event.format) };
   }
 }
+
+// The public site can only convert, so only the local server's page promises Meraki upload.
+export function headlineFor({ meraki }) {
+  return meraki
+    ? { lead: 'Upload Wi-Fi designs or validations', quiet: 'to the Meraki Dashboard.' }
+    : { lead: 'Move Wi-Fi designs', quiet: 'between Ekahau and Open Intent.' };
+}

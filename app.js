@@ -1,6 +1,6 @@
 // DOM wiring only: the copy comes from cardFor() and the work from convert().
 import { convert, MAX_FILE_BYTES } from './src/convert.js';
-import { cardFor } from './src/messages.js';
+import { cardFor, headlineFor } from './src/messages.js';
 import { browserImageTools } from './src/browser-images.js';
 import { ConversionError, NotSupportedError } from './src/errors.js';
 
@@ -49,6 +49,9 @@ fetch('api/health')
     if (health?.ok !== true) return;
     merakiMessages = await import('./src/meraki-messages.js');
     merakiAvailable = true;
+    const { lead, quiet } = headlineFor({ meraki: true });
+    document.getElementById('headline-lead').textContent = lead;
+    document.getElementById('headline-quiet').textContent = quiet;
   })
   .catch(() => {});
 
