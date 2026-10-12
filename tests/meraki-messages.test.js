@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { floorRows, uploadButton, finishedCard } from '../src/meraki-messages.js';
+import {
+  floorRows, uploadButton, finishedCard, suggestMerakiName,
+} from '../src/meraki-messages.js';
 
 const floor = (name, problem = null) => ({ name, widthM: 10, lengthM: 20, image: null, problem });
 const placed = (...names) => new Map(names.map((name) => [name, { lat: 1, lng: 2 }]));
@@ -65,4 +67,9 @@ test('a second floor with the same name in the design is blocked', () => {
   assert.equal(second.action, 'blocked');
   assert.equal(second.reason, 'Two floors in this design are named “Ground”.');
   assert.equal(second.ticked, false);
+});
+
+test('a suggested Meraki name swaps disallowed characters for spaces', () => {
+  assert.equal(suggestMerakiName('Level 1 (East Wing) – Offices'), 'Level 1 East Wing Offices');
+  assert.equal(suggestMerakiName('Ground'), 'Ground');
 });

@@ -1,6 +1,13 @@
 // Works out the Floors step's rows, the upload button and the flow's fixed copy, kept pure so it can be tested.
 import { matchFloorPlan, duplicatePlansMessage } from './floor-plan-match.js';
 
+// Meraki only accepts these characters in a floor plan name.
+const DISALLOWED_RUN = /[^\p{L}\p{N} _-]+/gu;
+
+export function suggestMerakiName(floorName) {
+  return floorName.replace(DISALLOWED_RUN, ' ').replace(/ +/g, ' ').trim();
+}
+
 function rowFor(floor, isRepeat, existingPlans, placements, unticked) {
   const base = { name: floor.name, placed: placements.has(floor.name) };
   const blocked = (reason) => ({ ...base, action: 'blocked', reason, ticked: false });
