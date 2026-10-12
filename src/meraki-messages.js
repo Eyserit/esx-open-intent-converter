@@ -3,6 +3,7 @@ import { matchFloorPlan, duplicatePlansMessage } from './floor-plan-match.js';
 
 // Meraki only accepts these characters in a floor plan name, up to 25 of them.
 const DISALLOWED_RUN = /[^\p{L}\p{N} _-]+/gu;
+const ALLOWED_NAME = /^[\p{L}\p{N} _-]*$/u;
 const MAX_NAME_LENGTH = 25;
 
 export function suggestMerakiName(floorName) {
@@ -16,6 +17,7 @@ export function merakiNameProblem(name) {
   if (name.trim() === '') return 'Enter a name.';
   const length = Array.from(name).length;
   if (length > MAX_NAME_LENGTH) return `Use ${MAX_NAME_LENGTH} characters or fewer (this one has ${length}).`;
+  if (!ALLOWED_NAME.test(name)) return 'Use only letters, numbers, spaces, - and _.';
   return null;
 }
 

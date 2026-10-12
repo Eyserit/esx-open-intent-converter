@@ -95,4 +95,12 @@ test('a Meraki name over 25 characters says how long it is', () => {
   assert.equal(merakiNameProblem('𝐀'.repeat(25)), null);
   // Length is checked before characters, so the count shows even with a bad character.
   assert.equal(merakiNameProblem(`${'a'.repeat(25)}!`), 'Use 25 characters or fewer (this one has 26).');
+  // Blank is checked first, even when the spaces run past 25.
+  assert.equal(merakiNameProblem(' '.repeat(30)), 'Enter a name.');
+});
+
+test('a Meraki name with a disallowed character lists the allowed ones', () => {
+  assert.equal(merakiNameProblem('Level 1 (East)'), 'Use only letters, numbers, spaces, - and _.');
+  assert.equal(merakiNameProblem('Étage 2 – Est'), 'Use only letters, numbers, spaces, - and _.');
+  assert.equal(merakiNameProblem('Étage_2 - Est 東'), null);
 });
