@@ -42,6 +42,12 @@ test('placing or unticking one of two same-named floors leaves the other alone',
   assert.equal(b.ticked, true);
 });
 
+test('a chosen name is trimmed before it is checked, matched and sent', () => {
+  const [row] = floorRows([floor('Ground')], [{ id: '1', name: 'Lobby' }], placed(0), new Set(), new Map([[0, ' Lobby ']]));
+  assert.equal(row.action, 'update');
+  assert.equal(row.merakiName, 'Lobby');
+});
+
 test('renaming a floor to an existing plan updates it, and renaming it back creates', () => {
   const plans = [{ id: '1', name: 'Lobby' }];
   const rowNamed = (name) => floorRows([floor('Ground')], plans, placed(0), new Set(), new Map([[0, name]]))[0];

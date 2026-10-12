@@ -37,7 +37,8 @@ function rowFor(floor, index, merakiName, isRepeat, existingPlans, placements, u
 // placements, unticked and names are keyed by floor index, so floors that share a name stay separate.
 // A floor missing from names gets the suggested Meraki name.
 export function floorRows(floors, existingPlans, placements, unticked, names = new Map()) {
-  const chosen = floors.map((floor, i) => names.get(i) ?? suggestMerakiName(floor.name));
+  // Trimmed so stray spaces don't stop a match or reach Meraki; the input keeps what was typed.
+  const chosen = floors.map((floor, i) => (names.get(i) ?? suggestMerakiName(floor.name)).trim());
   return floors.map((floor, i) =>
     rowFor(floor, i, chosen[i], chosen.indexOf(chosen[i]) < i, existingPlans, placements, unticked));
 }
