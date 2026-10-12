@@ -49,6 +49,17 @@ test('floors given the same Meraki name block the second and later ones', () => 
   assert.equal(other.reason, 'Two floors in this design are named “Level 1”.');
 });
 
+test('upload waits for ticked floors to have valid names, after ticking and before placing', () => {
+  const row = (ticked, placed, nameProblem) => ({ name: 'F', action: 'create', reason: null, placed, ticked, nameProblem });
+  const bad = 'Enter a name.';
+  assert.equal(uploadButton([row(false, false, bad)]).hint, 'Tick at least one floor.');
+  assert.deepEqual(uploadButton([row(true, false, bad)]),
+    { enabled: false, label: 'Upload 1 floor', hint: 'Fix the floor names first.' });
+  assert.equal(uploadButton([row(true, false, null)]).hint, 'Place every ticked floor on the map first.');
+  // An unticked floor's name doesn't hold up the others.
+  assert.equal(uploadButton([row(true, true, null), row(false, true, bad)]).enabled, true);
+});
+
 test('an existing plan with the same name updates', () => {
   const [row] = floorRows([floor('Ground')], [{ id: '1', name: 'Ground' }], placed('Ground'), new Set());
   assert.equal(row.action, 'update');

@@ -63,6 +63,7 @@ export function finishedCard({ networkName, results }) {
 
 function hintFor(ticked) {
   if (ticked.length === 0) return 'Tick at least one floor.';
+  if (ticked.some((row) => row.nameProblem)) return 'Fix the floor names first.';
   if (!ticked.every((row) => row.placed)) return 'Place every ticked floor on the map first.';
   return null;
 }
