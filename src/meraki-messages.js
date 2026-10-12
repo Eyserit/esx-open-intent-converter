@@ -45,6 +45,7 @@ export function floorRows(floors, existingPlans, placements, unticked, names = n
 
 // With the floors placed together as one building, every floor shares the building's placement.
 export function effectivePlacements(placements, building) {
+  if (!building.together) return placements;
   if (!building.placement) return new Map();
   return new Map(Array.from({ length: building.count }, (_, i) => [i, building.placement]));
 }
