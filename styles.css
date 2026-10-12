@@ -710,6 +710,17 @@ main {
   text-align: right;
 }
 
+.map-done-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+  text-align: right;
+}
+
+.map-done-hint:empty {
+  display: none;
+}
+
 .map-hint {
   margin: 0;
   color: var(--text-faint);

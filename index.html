@@ -80,8 +80,10 @@
         <input id="map-rotation" type="range" min="-180" max="180" step="0.5" value="0">
         <output id="map-rotation-value" class="mono" for="map-rotation">0°</output>
       </label>
-      <button id="map-done" class="pill pill-small pill-primary" type="button">Done</button>
+      <button id="map-move-here" class="pill pill-small" type="button">Move outline here</button>
+      <button id="map-done" class="pill pill-small pill-primary" type="button" aria-describedby="map-done-hint">Done</button>
     </div>
+    <p id="map-done-hint" class="map-done-hint"></p>
     <p class="map-hint">Drag the outline to move it and the round handle to rotate it. With the outline focused: arrows move it (Shift for 5 m), [ and ] rotate it.</p>
   </dialog>
 

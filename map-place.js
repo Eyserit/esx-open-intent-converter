@@ -10,6 +10,7 @@ const SEARCH_GAP_MS = 1000;
 const SEARCH_ZOOM = 18;
 const STEP_M = 0.5;
 const SHIFT_STEP_M = 5;
+const DONE_HINT = 'Find the building first: search, or drag the outline.';
 const ARROWS = { ArrowUp: [0, 1], ArrowDown: [0, -1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
 const ROTATE_KEYS = { '[': -1, ']': 1 };
 const OUTLINE_STYLE = {
@@ -43,6 +44,8 @@ export function placeFloor({ floor, start, near }) {
   const searchStatus = document.getElementById('map-search-status');
   const slider = document.getElementById('map-rotation');
   const readout = document.getElementById('map-rotation-value');
+  const done = document.getElementById('map-done');
+  const doneHint = document.getElementById('map-done-hint');
   document.getElementById('map-floor').textContent = floor.name;
   searchBox.value = '';
   searchStatus.textContent = '';
@@ -54,6 +57,8 @@ export function placeFloor({ floor, start, near }) {
 
   let center = start ? plain(start.center) : plain(map.getCenter());
   let rotation = start ? start.rotation : 0;
+  // With nowhere to start, the outline sits wherever the world map centres, so Done waits for a real choice.
+  let chosen = Boolean(start || near);
   // The rotate handle sits a little beyond the top edge, scaled to the floor so it stays clear of it.
   const handleGapM = floor.lengthM / 2 + Math.max(3, floor.lengthM * 0.2);
 
@@ -84,14 +89,25 @@ export function placeFloor({ floor, start, near }) {
     readout.textContent = `${Number(rotation.toFixed(1))}°`;
   }
 
+  function showDone() {
+    // aria-disabled rather than disabled keeps Done focusable, so the hint is still read out.
+    done.setAttribute('aria-disabled', String(!chosen));
+    doneHint.textContent = chosen ? '' : DONE_HINT;
+  }
+
+  // Only the user's own moves come through here, so each one counts as choosing a place.
   function setCenter(latLng) {
     center = plain(latLng);
+    chosen = true;
     redraw();
+    showDone();
   }
 
   function setRotation(degrees, options) {
     rotation = wrapRotation(degrees);
+    chosen = true;
     redraw(options);
+    showDone();
   }
 
   centreMarker.on('drag', () => setCenter(centreMarker.getLatLng()));
@@ -137,7 +153,7 @@ export function placeFloor({ floor, start, near }) {
 
   const flyTo = (latLng) => {
     map.flyTo(latLng, SEARCH_ZOOM);
-    if (!start) setCenter(latLng);
+    setCenter(latLng);
   };
 
   async function search(query, signal) {
@@ -167,6 +183,7 @@ export function placeFloor({ floor, start, near }) {
   }
 
   redraw();
+  showDone();
   const opened = new AbortController();
   const { signal } = opened;
   centreMarker.getElement().addEventListener('keydown', onOutlineKey);
@@ -178,6 +195,7 @@ export function placeFloor({ floor, start, near }) {
     const query = searchBox.value.trim();
     if (query) search(query, signal);
   }, { signal });
+  document.getElementById('map-move-here').addEventListener('click', () => setCenter(map.getCenter()), { signal });
 
   return new Promise((resolve) => {
     function finish(result) {
@@ -187,7 +205,9 @@ export function placeFloor({ floor, start, near }) {
       returnFocus?.focus?.();
       resolve(result);
     }
-    document.getElementById('map-done').addEventListener('click', () => finish({ center, rotation }), { signal });
+    done.addEventListener('click', () => {
+      if (chosen) finish({ center, rotation });
+    }, { signal });
     document.getElementById('map-close').addEventListener('click', () => finish(null), { signal });
     dialog.addEventListener('cancel', (event) => {
       event.preventDefault();
