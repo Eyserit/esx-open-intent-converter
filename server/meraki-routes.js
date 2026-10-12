@@ -1,6 +1,7 @@
 import { GENERIC_MESSAGE, MerakiError } from './meraki-request.js';
 
 const CORNERS = ['topLeftCorner', 'topRightCorner'];
+const NUMBERS = ['lat', 'lng'];
 
 const CREDENTIALS = ['region', 'apiKey'];
 
@@ -18,7 +19,9 @@ function isCorner(value) {
 }
 
 function isValidField(field, value) {
-  return CORNERS.includes(field) ? isCorner(value) : isNonEmptyString(value);
+  if (CORNERS.includes(field)) return isCorner(value);
+  if (NUMBERS.includes(field)) return Number.isFinite(value);
+  return isNonEmptyString(value);
 }
 
 function firstInvalidField(body, fields) {
@@ -48,6 +51,11 @@ export function createRoutes(client) {
     [
       '/api/floor-plans/upload',
       route(['networkId', 'name', 'imageContents', ...CORNERS], (body) => client.uploadFloorPlan(body)),
+    ],
+    ['/api/access-points', route(['organizationId', 'networkId'], (body) => client.listAccessPoints(body))],
+    [
+      '/api/access-points/place',
+      route(['serial', 'lat', 'lng', 'floorPlanId'], (body) => client.placeAccessPoint(body)),
     ],
   ]);
 }

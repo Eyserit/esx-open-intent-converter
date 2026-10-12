@@ -147,3 +147,56 @@ test('403 listing organisations says the key was not accepted', async () => {
     (err) => err.status === 401 && err.message === "That API key wasn't accepted by Meraki (Canada).",
   );
 });
+
+const AP_BASE = 'https://api.meraki.com/api/v1';
+const DEVICES_URL = `${AP_BASE}/organizations/O%2F1/devices?networkIds[]=N_2&productTypes[]=wireless&perPage=1000`;
+const PLANS_URL = `${AP_BASE}/networks/N_2/floorPlans`;
+const STATUSES_URL = `${AP_BASE}/organizations/O%2F1/wireless/ssids/statuses/byDevice?networkIds[]=N_2&hideDisabled=false&perPage=500`;
+
+test('access points join devices, floor plans and BSSIDs by serial', async () => {
+  const { client, calls } = setup([
+    { body: [{ serial: 'Q1', name: 'AP-1', lat: 53.1, lng: -6.2, mac: 'x' }] },
+    { body: [{ floorPlanId: 'fp1', name: 'Ground', devices: [{ serial: 'Q1' }] }] },
+    { body: { items: [{ serial: 'Q1', basicServiceSets: [{ bssid: '02:00:00:00:0A:01' }, { bssid: '02:00:00:00:0a:01' }] }] } },
+  ]);
+  const result = await client.listAccessPoints({ ...ctx, organizationId: 'O/1', networkId: 'N_2' });
+  assert.deepEqual(calls.map((c) => c.url), [DEVICES_URL, PLANS_URL, STATUSES_URL]);
+  assert.deepEqual(result.accessPoints, [
+    { serial: 'Q1', name: 'AP-1', floorPlanId: 'fp1', lat: 53.1, lng: -6.2, bssids: ['02:00:00:00:0a:01'] },
+  ]);
+  assert.deepEqual(result.floorPlans, [{ id: 'fp1', name: 'Ground' }]);
+});
+
+test('an AP with no BSSID entry, name or position gets empty values', async () => {
+  const { client } = setup([
+    { body: [{ serial: 'Q2', name: null }] },
+    { body: [] },
+    { body: { items: [] } },
+  ]);
+  const { accessPoints } = await client.listAccessPoints({ ...ctx, organizationId: 'O/1', networkId: 'N_2' });
+  assert.deepEqual(accessPoints, [{ serial: 'Q2', name: '', floorPlanId: null, lat: null, lng: null, bssids: [] }]);
+});
+
+test('BSSID pages follow Link', async () => {
+  const { client, calls } = setup([
+    { body: [{ serial: 'Q1', name: 'AP-1' }, { serial: 'Q2', name: 'AP-2' }] },
+    { body: [] },
+    {
+      body: { items: [{ serial: 'Q1', basicServiceSets: [{ bssid: 'AA:00:00:00:00:01' }] }] },
+      headers: { Link: '<https://n1.meraki.com/api/v1/organizations/O%2F1/wireless/ssids/statuses/byDevice?startingAfter=Q1>; rel=next' },
+    },
+    { body: { items: [{ serial: 'Q2', basicServiceSets: [{ bssid: 'AA:00:00:00:00:02' }] }] } },
+  ]);
+  const { accessPoints } = await client.listAccessPoints({ ...ctx, organizationId: 'O/1', networkId: 'N_2' });
+  assert.equal(calls.length, 4);
+  assert.deepEqual(accessPoints.map((ap) => ap.bssids), [['aa:00:00:00:00:01'], ['aa:00:00:00:00:02']]);
+});
+
+test('placing an AP PUTs lat, lng and floorPlanId to the encoded serial', async () => {
+  const { client, calls } = setup([{ body: { serial: 'Q2XX/1', lat: 53.1 } }]);
+  const result = await client.placeAccessPoint({ ...ctx, serial: 'Q2XX/1', lat: 53.1, lng: -6.2, floorPlanId: 'fp1' });
+  assert.deepEqual(result, { serial: 'Q2XX/1' });
+  assert.equal(calls[0].url, `${AP_BASE}/devices/Q2XX%2F1`);
+  assert.equal(calls[0].init.method, 'PUT');
+  assert.deepEqual(JSON.parse(calls[0].init.body), { lat: 53.1, lng: -6.2, floorPlanId: 'fp1' });
+});

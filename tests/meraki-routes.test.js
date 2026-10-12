@@ -17,6 +17,8 @@ const bodies = {
     topLeftCorner: corner,
     topRightCorner: { lat: 53.1, lng: -6.1 },
   },
+  '/api/access-points': { region: 'global', apiKey: 'k123', organizationId: 'o1', networkId: 'n1' },
+  '/api/access-points/place': { region: 'global', apiKey: 'k123', serial: 'Q1', lat: 53.1, lng: -6.2, floorPlanId: 'fp1' },
 };
 
 function fakeClient(impl = {}) {
@@ -26,7 +28,7 @@ function fakeClient(impl = {}) {
     return impl[method] ? impl[method](args) : { from: method };
   };
   const client = Object.fromEntries(
-    ['listOrganizations', 'listWirelessNetworks', 'listFloorPlans', 'uploadFloorPlan'].map((m) => [m, record(m)]),
+    ['listOrganizations', 'listWirelessNetworks', 'listFloorPlans', 'uploadFloorPlan', 'listAccessPoints', 'placeAccessPoint'].map((m) => [m, record(m)]),
   );
   return { client, calls };
 }
@@ -39,6 +41,8 @@ test('each route passes its fields to the client and returns 200', async () => {
     '/api/networks': 'listWirelessNetworks',
     '/api/floor-plans': 'listFloorPlans',
     '/api/floor-plans/upload': 'uploadFloorPlan',
+    '/api/access-points': 'listAccessPoints',
+    '/api/access-points/place': 'placeAccessPoint',
   };
   for (const [path, method] of Object.entries(methods)) {
     calls.length = 0;
@@ -107,4 +111,23 @@ test('an unexpected error is a 500 with the generic message', async () => {
   const result = await createRoutes(client).get('/api/organizations')(bodies['/api/organizations']);
   assert.deepEqual(result, { status: 500, json: { error: 'Something went wrong talking to Meraki.' } });
   assert.doesNotMatch(JSON.stringify(result), /boom|k123/);
+});
+
+test('place needs lat and lng as finite numbers', async () => {
+  const { client, calls } = fakeClient();
+  const place = createRoutes(client).get('/api/access-points/place');
+  const body = bodies['/api/access-points/place'];
+  assert.deepEqual(await place({ ...body, lat: '53.1' }), { status: 400, json: { error: 'Missing or invalid lat.' } });
+  assert.deepEqual(await place({ ...body, lng: null }), { status: 400, json: { error: 'Missing or invalid lng.' } });
+  assert.deepEqual(calls, []);
+});
+
+test('extra fields never reach the client', async () => {
+  const { client, calls } = fakeClient();
+  const routes = createRoutes(client);
+  for (const path of ['/api/access-points', '/api/access-points/place']) {
+    calls.length = 0;
+    await routes.get(path)({ ...bodies[path], extra: 'x' });
+    assert.equal('extra' in calls[0].args, false);
+  }
 });

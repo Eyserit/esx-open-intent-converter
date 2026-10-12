@@ -69,5 +69,45 @@ export function createMerakiClient({ fetch, sleep }) {
     return { action: 'created', floorPlanId: json.floorPlanId };
   }
 
-  return { listOrganizations, listWirelessNetworks, listFloorPlans, uploadFloorPlan };
+  async function listAccessPoints({ organizationId, networkId, ...ctx }) {
+    const o = encodeURIComponent(organizationId);
+    const n = encodeURIComponent(networkId);
+    const devices = await getAllPages(ctx, `/organizations/${o}/devices?networkIds[]=${n}&productTypes[]=wireless&perPage=1000`);
+    const { json: plans } = await request(ctx, 'GET', `/networks/${n}/floorPlans`);
+    const statuses = await getAllPages(
+      ctx,
+      `/organizations/${o}/wireless/ssids/statuses/byDevice?networkIds[]=${n}&hideDisabled=false&perPage=500`,
+      (json) => json.items,
+    );
+
+    const planBySerial = new Map();
+    for (const plan of plans) {
+      for (const { serial } of plan.devices ?? []) planBySerial.set(serial, plan.floorPlanId);
+    }
+    const bssidsBySerial = new Map();
+    for (const { serial, basicServiceSets = [] } of statuses) {
+      const found = bssidsBySerial.get(serial) ?? new Set();
+      for (const { bssid } of basicServiceSets) found.add(bssid.toLowerCase());
+      bssidsBySerial.set(serial, found);
+    }
+
+    return {
+      accessPoints: devices.map(({ serial, name, lat, lng }) => ({
+        serial,
+        name: name ?? '',
+        floorPlanId: planBySerial.get(serial) ?? null,
+        lat: lat ?? null,
+        lng: lng ?? null,
+        bssids: [...(bssidsBySerial.get(serial) ?? [])],
+      })),
+      floorPlans: plans.map(({ floorPlanId, name }) => ({ id: floorPlanId, name })),
+    };
+  }
+
+  async function placeAccessPoint({ serial, lat, lng, floorPlanId, ...ctx }) {
+    await request(ctx, 'PUT', `/devices/${encodeURIComponent(serial)}`, { lat, lng, floorPlanId });
+    return { serial };
+  }
+
+  return { listOrganizations, listWirelessNetworks, listFloorPlans, uploadFloorPlan, listAccessPoints, placeAccessPoint };
 }
