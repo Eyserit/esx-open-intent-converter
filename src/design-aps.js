@@ -66,6 +66,6 @@ export function designApsFromOpenIntent(design) {
   return (design.accesspoints ?? []).flatMap((ap) => {
     const position = positionOnFloor(ap, floors.get(ap.floorplan_name));
     if (!position) return [];
-    return [{ name: ap.name, floorName: ap.floorplan_name, ...position, mine: true, bssids: [] }];
+    return [{ name: typeof ap.name === 'string' ? ap.name : '', floorName: ap.floorplan_name, ...position, mine: true, bssids: [] }];
   });
 }

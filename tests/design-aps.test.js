@@ -95,3 +95,9 @@ test('an Open Intent AP on a floor with no metre size, or with no coordinates, i
   };
   assert.deepEqual(designApsFromOpenIntent(design).map((ap) => ap.name), ['Kept']);
 });
+
+test('an Open Intent AP with no string name gets an empty name', () => {
+  const at = [{ coordinate_xyz: { x: 5, y: 12, z: 0, unit: 'meters' } }];
+  const design = { floorplans: [oiFloor], accesspoints: [oiAp(undefined, at), oiAp(7, at)] };
+  assert.deepEqual(designApsFromOpenIntent(design).map((ap) => ap.name), ['', '']);
+});
