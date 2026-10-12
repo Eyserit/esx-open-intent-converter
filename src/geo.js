@@ -6,16 +6,19 @@ function metresPerDegreeLng(lat) {
   return METRES_PER_DEGREE_LAT * Math.cos((lat * Math.PI) / 180);
 }
 
-export function cornersFor({ center, widthM, lengthM, rotation }) {
+// Rotation is clockwise, so east/north offsets turn by x' = x cos + y sin, y' = -x sin + y cos.
+function pointAt(center, rotation, eastM, northM) {
   const theta = (rotation * Math.PI) / 180;
   const cos = Math.cos(theta);
   const sin = Math.sin(theta);
-  const lngScale = metresPerDegreeLng(center.lat);
-  // Rotation is clockwise, so east/north offsets turn by x' = x cos + y sin, y' = -x sin + y cos.
-  const at = (x, y) => ({
-    lat: center.lat + (-x * sin + y * cos) / METRES_PER_DEGREE_LAT,
-    lng: center.lng + (x * cos + y * sin) / lngScale,
-  });
+  return {
+    lat: center.lat + (-eastM * sin + northM * cos) / METRES_PER_DEGREE_LAT,
+    lng: center.lng + (eastM * cos + northM * sin) / metresPerDegreeLng(center.lat),
+  };
+}
+
+export function cornersFor({ center, widthM, lengthM, rotation }) {
+  const at = (x, y) => pointAt(center, rotation, x, y);
   const w = widthM / 2;
   const l = lengthM / 2;
   return { topLeft: at(-w, l), topRight: at(w, l), bottomRight: at(w, -l), bottomLeft: at(-w, -l) };
