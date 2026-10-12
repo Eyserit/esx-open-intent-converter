@@ -14,7 +14,7 @@ export class MerakiError extends Error {
   }
 }
 
-export function redact(text, apiKey) {
+function redact(text, apiKey) {
   if (!apiKey) return text;
   return text.replaceAll(apiKey, '[redacted]');
 }

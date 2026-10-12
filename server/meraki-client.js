@@ -2,7 +2,7 @@ import { duplicatePlansMessage, matchFloorPlan } from '../src/floor-plan-match.j
 import { REGIONS } from '../src/meraki-regions.js';
 import { GENERIC_MESSAGE, MerakiError, createRequest, isWithinDomain } from './meraki-request.js';
 
-export { MerakiError, redact } from './meraki-request.js';
+export { MerakiError } from './meraki-request.js';
 
 const NEXT_LINK = /<([^>]*)>\s*;\s*rel="?next"?/;
 

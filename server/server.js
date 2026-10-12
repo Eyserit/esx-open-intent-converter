@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, resolve, sep } from 'node:path';
 
-export const MAX_BODY_BYTES = 140 * 1024 * 1024;
+const MAX_BODY_BYTES = 140 * 1024 * 1024;
 
 const PAGE_FILES = ['index.html', 'styles.css', 'app.js', 'meraki-flow.js', 'map-place.js'];
 const PAGE_DIRS = ['src', 'vendor'];
