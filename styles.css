@@ -535,7 +535,8 @@ main {
   border-top: 0;
 }
 
-.floor-row input[type="checkbox"] {
+.floor-row input[type="checkbox"],
+.meraki-together input[type="checkbox"] {
   flex: none;
   width: 18px;
   height: 18px;
@@ -543,7 +544,8 @@ main {
   accent-color: var(--fill);
 }
 
-.floor-row input[type="checkbox"]:focus-visible {
+.floor-row input[type="checkbox"]:focus-visible,
+.meraki-together input[type="checkbox"]:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -552,6 +554,27 @@ main {
   flex: 1;
   min-width: 10ch;
   overflow-wrap: anywhere;
+}
+
+/* The one-building option and its placement sit above the floor list. */
+.meraki-together,
+.meraki-building {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  margin-top: 18px;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.meraki-building {
+  margin-top: 12px;
+}
+
+.meraki-building[hidden] {
+  display: none;
 }
 
 /* The name field takes its own line, lined up with the floor name past the checkbox. */

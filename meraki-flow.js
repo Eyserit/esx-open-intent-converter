@@ -3,7 +3,8 @@ import { listFloors } from './src/floors.js';
 import { cornersFor } from './src/geo.js';
 import { REGIONS } from './src/meraki-regions.js';
 import {
-  ACTION_LABELS, GENERIC, NO_ORGANISATIONS, NO_WIRELESS, SERVER_STOPPED, finishedCard, floorRows, uploadButton,
+  ACTION_LABELS, GENERIC, NO_ORGANISATIONS, NO_WIRELESS, SERVER_STOPPED, buildingReferenceIndex, effectivePlacements,
+  finishedCard, floorRows, uploadButton,
 } from './src/meraki-messages.js';
 import { placeFloor } from './map-place.js';
 
@@ -101,6 +102,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   const unticked = new Set();
   // Names typed for Meraki, by floor index; kept so Back to floors shows them again.
   const names = new Map();
+  // Floors of one building share a single placement; kept so Back to floors shows it again.
+  const building = { together: false, placement: null };
   let lastPlacedCenter = null;
   let organizations = [];
   let organizationId = null;
@@ -124,6 +127,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   const announce = (text) => {
     status.textContent = text;
   };
+
+  const currentPlacements = () => effectivePlacements(placements, { ...building, count: floors.length });
 
   function exit() {
     apiKey = null;
@@ -277,8 +282,9 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       box.checked = ticked;
       box.disabled = blocked;
       what.textContent = reason ? `${ACTION_LABELS[action]} · ${reason}` : ACTION_LABELS[action];
-      tag.hidden = blocked;
-      place.hidden = blocked;
+      // Placed together, the building's own button and tag stand in for every row's.
+      tag.hidden = blocked || building.together;
+      place.hidden = blocked || building.together;
       nameProblem.textContent = problem ?? '';
       nameInput.setAttribute('aria-invalid', String(problem !== null));
       tag.textContent = placed ? 'Placed' : 'Not placed yet';
@@ -290,15 +296,52 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     return { item, update };
   }
 
+  // Built once and then updated in place, like the floor rows.
+  function buildingControls(refresh) {
+    const toggle = el('input', { type: 'checkbox', id: 'meraki-together', checked: building.together });
+    const together = el('div', { className: 'meraki-together' },
+      toggle, el('label', { htmlFor: toggle.id, textContent: 'These floors are one building: place them together' }));
+    const tag = el('span', { className: 'tag' });
+    const place = el('button', { className: 'pill pill-small', type: 'button' });
+    const placeRow = el('div', { className: 'meraki-building' }, place, tag);
+
+    toggle.addEventListener('change', () => {
+      building.together = toggle.checked;
+      // Unticking leaves every floor where the building was, ready to adjust one by one.
+      if (!building.together && building.placement) floors.forEach((_, i) => placements.set(i, building.placement));
+      refresh();
+    });
+    place.addEventListener('click', async () => {
+      const reference = buildingReferenceIndex(floors, floorRows(floors, plans, currentPlacements(), unticked, names));
+      if (reference === null) return;
+      const { name, widthM, lengthM } = floors[reference];
+      const placed = await placeFloor({ floor: { name, widthM, lengthM }, start: building.placement, near: lastPlacedCenter });
+      if (!placed) return;
+      building.placement = placed;
+      lastPlacedCenter = placed.center;
+      refresh();
+    });
+
+    function update(rows) {
+      placeRow.hidden = !building.together || buildingReferenceIndex(floors, rows) === null;
+      const placed = building.placement !== null;
+      tag.textContent = placed ? 'Placed' : 'Not placed yet';
+      tag.classList.toggle('tag-placed', placed);
+      place.textContent = placed ? 'Edit building placement' : 'Place building on map';
+    }
+    return { nodes: [together, placeRow], update };
+  }
+
   function floorsStep() {
     const hint = el('p', { className: 'meraki-hint', id: 'meraki-upload-hint' });
     const upload = el('button', { className: 'pill pill-primary', type: 'button' });
     upload.setAttribute('aria-describedby', hint.id);
 
     function refresh() {
-      const rows = floorRows(floors, plans, placements, unticked, names);
+      const rows = floorRows(floors, plans, currentPlacements(), unticked, names);
       rows.forEach((row, i) => items[i].update(row));
-      const button = uploadButton(rows);
+      controls?.update(rows);
+      const button = uploadButton(rows, { together: building.together });
       upload.textContent = button.label;
       // aria-disabled rather than disabled keeps the button focusable, so the hint is still read out.
       upload.setAttribute('aria-disabled', String(!button.enabled));
@@ -306,7 +349,9 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       return { rows, enabled: button.enabled };
     }
 
-    const items = floorRows(floors, plans, placements, unticked, names).map((row, i) => floorItem(row, i, refresh));
+    const items = floorRows(floors, plans, currentPlacements(), unticked, names).map((row, i) => floorItem(row, i, refresh));
+    // Only a design with several floors can be placed as one building.
+    const controls = floors.length >= 2 ? buildingControls(refresh) : null;
     upload.addEventListener('click', () => {
       const { rows, enabled } = refresh();
       if (enabled) uploadStep(rows);
@@ -317,14 +362,15 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       stepper(2),
       heading('Choose floors to upload'),
       detail('Place each ticked floor on the map before uploading.'),
+      ...(controls?.nodes ?? []),
       el('ul', { className: 'floor-list' }, ...items.map(({ item }) => item)),
       actions(pill('Back', networkStep), pill('Disconnect', exit), upload),
       hint,
     );
   }
 
-  async function uploadFloor({ floor, index, merakiName }) {
-    const { center, rotation } = placements.get(index);
+  async function uploadFloor({ floor, index, merakiName, placement }) {
+    const { center, rotation } = placement;
     const { topLeft, topRight } = cornersFor({ center, widthM: floor.widthM, lengthM: floor.lengthM, rotation });
     try {
       const { action } = await api('api/floor-plans/upload', {
@@ -342,8 +388,10 @@ export function startMerakiFlow({ container, openintent, onExit }) {
 
   async function uploadStep(rows) {
     // Each upload keeps its floor's index, which is what placements and unticked are keyed by.
-    const chosen = floors.flatMap((floor, index) =>
-      (rows[index].ticked ? [{ floor, index, merakiName: rows[index].merakiName }] : []));
+    const placed = currentPlacements();
+    const chosen = floors.flatMap((floor, index) => (rows[index].ticked
+      ? [{ floor, index, merakiName: rows[index].merakiName, placement: placed.get(index) }]
+      : []));
     const progress = detail('');
     const tags = chosen.map(() => el('span', { className: 'tag', textContent: 'Waiting' }));
     const list = el('ul', { className: 'floor-list' }, ...chosen.map(({ merakiName }, i) =>

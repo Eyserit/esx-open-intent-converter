@@ -38,6 +38,7 @@ After a conversion, the Done card offers "Send to Meraki". The flow:
 3. Pick the floors to send.
    Each floor has a "Name in Meraki", suggested from its name. Meraki allows up to 25 characters: letters, numbers, spaces, - and _.
 4. Place each floor on the map (search an address, drag the outline, or use "Move outline here") and set its rotation.
+   With 2 or more floors, tick "These floors are one building: place them together" to place the largest ticked floor once; every floor shares its centre and rotation.
 5. Upload. A floor is created, or updated if a floor plan with exactly the same name exists. The outline position and rotation are applied in Meraki.
 
 Floor plans only. APs are not placed.
