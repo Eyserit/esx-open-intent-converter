@@ -35,6 +35,20 @@ test('renaming a floor to an existing plan updates it, and renaming it back crea
   assert.equal(blocked.reason, '2 floor plans named “Lobby” in this network: rename one in Dashboard.');
 });
 
+test('floors given the same Meraki name block the second and later ones', () => {
+  const floors = [floor('Ground'), floor('First'), floor('Second')];
+  const names = new Map([['First', 'Ground'], ['Second', 'Ground']]);
+  const [ground, first, second] = floorRows(floors, [], placed(), new Set(), names);
+  assert.equal(ground.action, 'create');
+  assert.equal(first.action, 'blocked');
+  assert.equal(first.reason, 'Two floors in this design are named “Ground”.');
+  assert.equal(first.ticked, false);
+  assert.equal(second.action, 'blocked');
+  // Source names that differ only in disallowed characters collide once suggested.
+  const [, other] = floorRows([floor('Level 1'), floor('Level 1!')], [], placed(), new Set());
+  assert.equal(other.reason, 'Two floors in this design are named “Level 1”.');
+});
+
 test('an existing plan with the same name updates', () => {
   const [row] = floorRows([floor('Ground')], [{ id: '1', name: 'Ground' }], placed('Ground'), new Set());
   assert.equal(row.action, 'update');
