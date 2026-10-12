@@ -36,6 +36,15 @@ function plan(row, match, merakiAps, floors, uploaded, floorPlanNames) {
   };
 }
 
+async function send(p, placeAccessPoint) {
+  try {
+    await placeAccessPoint(p.send);
+    return p.done;
+  } catch (error) {
+    return { name: p.done.name, outcome: 'failed', reason: error.message };
+  }
+}
+
 export async function runApPhase({ designAps, floors, uploaded, earlier, listAccessPoints, placeAccessPoint, onProgress }) {
   const rows = designAps.flatMap((design) => {
     const verdict = eligibility(design, floors, uploaded, earlier);
@@ -56,16 +65,12 @@ export async function runApPhase({ designAps, floors, uploaded, earlier, listAcc
   const matches = matchAccessPoints(eligible.map((row) => row.design), accessPoints);
   const plans = eligible.map((row, i) => plan(row, matches[i], accessPoints, floors, uploaded, floorPlanNames));
   const sends = plans.filter((p) => p.send);
+  const sent = new Map();
   onProgress(0, sends.length);
   for (const [i, p] of sends.entries()) {
-    try {
-      await placeAccessPoint(p.send);
-      p.result = p.done;
-    } catch (error) {
-      p.result = { name: p.done.name, outcome: 'failed', reason: error.message };
-    }
+    sent.set(p, await send(p, placeAccessPoint));
     onProgress(i + 1, sends.length);
   }
-  eligible.forEach((row, i) => { row.result = plans[i].result; });
-  return { results: rows.map((row) => row.result ?? row), listError: null };
+  const resultByRow = new Map(eligible.map((row, i) => [row, plans[i].result ?? sent.get(plans[i])]));
+  return { results: rows.map((row) => resultByRow.get(row) ?? row), listError: null };
 }
