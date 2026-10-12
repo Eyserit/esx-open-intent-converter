@@ -2,15 +2,19 @@
 
 const METRES_PER_DEGREE_LAT = 111320;
 
+function metresPerDegreeLng(lat) {
+  return METRES_PER_DEGREE_LAT * Math.cos((lat * Math.PI) / 180);
+}
+
 export function cornersFor({ center, widthM, lengthM, rotation }) {
   const theta = (rotation * Math.PI) / 180;
   const cos = Math.cos(theta);
   const sin = Math.sin(theta);
-  const metresPerDegreeLng = METRES_PER_DEGREE_LAT * Math.cos((center.lat * Math.PI) / 180);
+  const lngScale = metresPerDegreeLng(center.lat);
   // Rotation is clockwise, so east/north offsets turn by x' = x cos + y sin, y' = -x sin + y cos.
   const at = (x, y) => ({
     lat: center.lat + (-x * sin + y * cos) / METRES_PER_DEGREE_LAT,
-    lng: center.lng + (x * cos + y * sin) / metresPerDegreeLng,
+    lng: center.lng + (x * cos + y * sin) / lngScale,
   });
   const w = widthM / 2;
   const l = lengthM / 2;
@@ -20,13 +24,13 @@ export function cornersFor({ center, widthM, lengthM, rotation }) {
 export function offsetBy(center, eastM, northM) {
   return {
     lat: center.lat + northM / METRES_PER_DEGREE_LAT,
-    lng: center.lng + eastM / (METRES_PER_DEGREE_LAT * Math.cos((center.lat * Math.PI) / 180)),
+    lng: center.lng + eastM / metresPerDegreeLng(center.lat),
   };
 }
 
 export function bearingTo(from, to) {
   const northM = (to.lat - from.lat) * METRES_PER_DEGREE_LAT;
-  const eastM = (to.lng - from.lng) * METRES_PER_DEGREE_LAT * Math.cos((from.lat * Math.PI) / 180);
+  const eastM = (to.lng - from.lng) * metresPerDegreeLng(from.lat);
   return (Math.atan2(eastM, northM) * 180) / Math.PI;
 }
 
