@@ -10,9 +10,11 @@ const detail = document.getElementById('card-detail');
 const progress = document.getElementById('progress');
 const status = document.getElementById('status');
 const fileInput = document.getElementById('file');
+const merakiPanel = document.getElementById('meraki-panel');
 const buttons = {
   choose: document.getElementById('choose'),
   download: document.getElementById('download'),
+  meraki: document.getElementById('meraki'),
   another: document.getElementById('another'),
   retry: document.getElementById('retry'),
 };
@@ -22,7 +24,7 @@ const ACTIONS = {
   idle: ['choose'],
   dragging: [],
   converting: [],
-  done: ['download', 'another'],
+  done: ['download', 'meraki', 'another'],
   unsupported: ['retry'],
 };
 const STAGE_PERCENT = { reading: 12, converting: 38, images: 66, writing: 90 };
@@ -37,10 +39,24 @@ const libraryReady = fetch('src/antenna-library.json').then((response) => {
 });
 libraryReady.catch(() => {});
 
+// Only the local server answers this; on GitHub Pages it 404s (the path is relative), so Send to Meraki stays hidden.
+let merakiAvailable = false;
+fetch('api/health')
+  .then((response) => (response.ok ? response.json() : null))
+  .then((health) => {
+    merakiAvailable = health?.ok === true;
+  })
+  .catch(() => {});
+
 let currentEvent = { type: 'idle' };
 let downloadUrl = null;
 let busy = false;
 let dragDepth = 0;
+let openintent = null; // the last result's Open Intent package, for Send to Meraki
+let merakiOpen = false;
+
+const offers = (state, name) =>
+  ACTIONS[state].includes(name) && (name !== 'meraki' || (merakiAvailable && openintent !== null));
 
 function render(event) {
   const { state, title: text, detail: more } = cardFor(event);
@@ -51,7 +67,7 @@ function render(event) {
   detail.textContent = more ?? '';
   detail.hidden = more === undefined;
   progress.hidden = state !== 'converting';
-  for (const [name, button] of Object.entries(buttons)) button.hidden = !ACTIONS[state].includes(name);
+  for (const [name, button] of Object.entries(buttons)) button.hidden = !offers(state, name);
 
   const announcement = more ? `${text} ${more}` : text;
   if (status.textContent !== announcement) status.textContent = announcement;
@@ -87,6 +103,7 @@ function offerDownload({ outputName, bytes }) {
 
 async function convertFile(file) {
   clearDownload();
+  openintent = null;
   busy = true;
   let direction;
   show({ type: 'converting', fileName: file.name });
@@ -100,6 +117,7 @@ async function convertFile(file) {
     };
     const result = await convert(bytes, file.name, { imageTools: browserImageTools, library: libraryReady, onProgress });
     offerDownload(result);
+    openintent = result.openintent;
     show({ type: 'done', outputName: result.outputName, notes: result.notes });
   } catch (error) {
     if (!(error instanceof NotSupportedError || error instanceof ConversionError)) console.error(error);
@@ -110,7 +128,7 @@ async function convertFile(file) {
 }
 
 function handleFiles(files) {
-  if (busy) return;
+  if (busy || merakiOpen) return;
   if (files.length === 0) return render(currentEvent);
   if (files.length > 1) return show({ type: 'multiple' });
   if (files[0].size > MAX_FILE_BYTES) return show({ type: 'too-large' });
@@ -125,8 +143,11 @@ function openPicker() {
 
 const isFileDrag = (event) => event.dataTransfer?.types.includes('Files');
 
+// While the Meraki panel is open the card isn't a drop target, so a drag can't redraw it.
+const ignoresDrops = () => busy || merakiOpen;
+
 document.addEventListener('dragenter', (event) => {
-  if (!isFileDrag(event) || busy) return;
+  if (!isFileDrag(event) || ignoresDrops()) return;
   event.preventDefault();
   dragDepth += 1;
   if (dragDepth === 1) render({ type: 'dragging' });
@@ -135,11 +156,11 @@ document.addEventListener('dragenter', (event) => {
 document.addEventListener('dragover', (event) => {
   if (!isFileDrag(event)) return;
   event.preventDefault();
-  event.dataTransfer.dropEffect = busy ? 'none' : 'copy';
+  event.dataTransfer.dropEffect = ignoresDrops() ? 'none' : 'copy';
 });
 
 document.addEventListener('dragleave', (event) => {
-  if (!isFileDrag(event) || busy) return;
+  if (!isFileDrag(event) || ignoresDrops()) return;
   dragDepth = Math.max(0, dragDepth - 1);
   if (dragDepth === 0) render(currentEvent);
 });
@@ -176,7 +197,23 @@ buttons.choose.addEventListener('click', openPicker);
 buttons.retry.addEventListener('click', openPicker);
 buttons.another.addEventListener('click', () => {
   clearDownload();
+  openintent = null;
   show({ type: 'idle' });
+});
+
+function closeMeraki() {
+  merakiOpen = false;
+  merakiPanel.hidden = true;
+  show(currentEvent);
+  buttons.meraki.focus();
+}
+
+buttons.meraki.addEventListener('click', async () => {
+  const { startMerakiFlow } = await import('./meraki-flow.js');
+  merakiOpen = true;
+  card.dataset.state = 'meraki';
+  merakiPanel.hidden = false;
+  startMerakiFlow({ container: merakiPanel, openintent, onExit: closeMeraki });
 });
 
 render(currentEvent);

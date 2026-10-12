@@ -30,6 +30,8 @@
   --fill: #ede7df;
   --focus: #ffc39a;
   --hairline: rgba(255, 255, 255, 0.07);
+  /* 10.2:1 on --card-top, so inline errors stay readable without reading as an alarm. */
+  --error: #f0b8a0;
   --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -366,6 +368,231 @@ main {
 .mono {
   font-family: var(--mono);
   font-size: 0.875em;
+}
+
+/* Send to Meraki: the steps replace the card's own content */
+
+.card[data-state="meraki"] .card-inner > :not(.meraki) {
+  display: none;
+}
+
+.meraki {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.meraki[hidden] {
+  display: none;
+}
+
+.meraki-heading:focus {
+  outline: none;
+}
+
+.meraki-heading:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.meraki .glyph svg {
+  display: block;
+}
+
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.stepper li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper li + li::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  margin-right: 2px;
+  background: var(--hairline);
+}
+
+.stepper .dot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-border);
+  font: 500 0.7rem/1 var(--mono);
+}
+
+.stepper .now {
+  color: var(--text);
+}
+
+.stepper .now .dot {
+  border-color: var(--fill);
+  background: var(--fill);
+  color: var(--bg);
+}
+
+.meraki-form {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  max-width: 380px;
+  margin-top: 18px;
+  text-align: left;
+}
+
+.meraki-form .actions {
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.field label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.field select,
+.field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--pill-border);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--text);
+  font: 400 0.9375rem var(--font);
+}
+
+.field select.mono {
+  font-family: var(--mono);
+  font-size: 0.875rem;
+}
+
+.field select:disabled {
+  color: var(--text-dim);
+}
+
+.field select:focus-visible,
+.field input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: var(--error);
+  font-size: 0.8125rem;
+}
+
+.field-error:empty {
+  display: none;
+}
+
+.floor-list {
+  width: 100%;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.floor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.875rem;
+}
+
+.floor-row:first-child {
+  border-top: 0;
+}
+
+.floor-row input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--fill);
+}
+
+.floor-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.floor-name {
+  flex: 1;
+  min-width: 10ch;
+  overflow-wrap: anywhere;
+}
+
+.floor-name .mono {
+  font-weight: 500;
+}
+
+.floor-name small {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.tag {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-border);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.tag-placed {
+  color: var(--text);
+}
+
+.tag-failed {
+  border-color: rgba(240, 184, 160, 0.35);
+  color: var(--error);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pill-primary[aria-disabled="true"] {
+  opacity: 0.4;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.meraki-hint {
+  margin: 12px 0 0;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.meraki-hint:empty {
+  display: none;
 }
 
 /* Map dialog: a near full-screen sheet in the card's surface */
