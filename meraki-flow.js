@@ -337,11 +337,15 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     const hint = el('p', { className: 'meraki-hint', id: 'meraki-upload-hint' });
     const upload = el('button', { className: 'pill pill-primary', type: 'button' });
     upload.setAttribute('aria-describedby', hint.id);
+    const instructions = detail('');
 
     function refresh() {
       const rows = currentRows();
       rows.forEach((row, i) => items[i].update(row));
       controls?.update(rows);
+      instructions.textContent = building.together
+        ? 'Place the building on the map before uploading.'
+        : 'Place each ticked floor on the map before uploading.';
       const button = uploadButton(rows, { together: building.together });
       upload.textContent = button.label;
       // aria-disabled rather than disabled keeps the button focusable, so the hint is still read out.
@@ -362,7 +366,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     showStep(
       stepper(2),
       heading('Choose floors to upload'),
-      detail('Place each ticked floor on the map before uploading.'),
+      instructions,
       ...(controls?.nodes ?? []),
       el('ul', { className: 'floor-list' }, ...items.map(({ item }) => item)),
       actions(pill('Back', networkStep), pill('Disconnect', exit), upload),
