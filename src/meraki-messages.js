@@ -14,6 +14,8 @@ export function suggestMerakiName(floorName) {
 
 export function merakiNameProblem(name) {
   if (name.trim() === '') return 'Enter a name.';
+  const length = Array.from(name).length;
+  if (length > MAX_NAME_LENGTH) return `Use ${MAX_NAME_LENGTH} characters or fewer (this one has ${length}).`;
   return null;
 }
 

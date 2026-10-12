@@ -88,3 +88,11 @@ test('an empty or blank Meraki name asks for a name', () => {
   assert.equal(merakiNameProblem(''), 'Enter a name.');
   assert.equal(merakiNameProblem('   '), 'Enter a name.');
 });
+
+test('a Meraki name over 25 characters says how long it is', () => {
+  assert.equal(merakiNameProblem('a'.repeat(26)), 'Use 25 characters or fewer (this one has 26).');
+  assert.equal(merakiNameProblem('𝐀'.repeat(26)), 'Use 25 characters or fewer (this one has 26).');
+  assert.equal(merakiNameProblem('𝐀'.repeat(25)), null);
+  // Length is checked before characters, so the count shows even with a bad character.
+  assert.equal(merakiNameProblem(`${'a'.repeat(25)}!`), 'Use 25 characters or fewer (this one has 26).');
+});
