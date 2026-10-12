@@ -42,7 +42,7 @@ npm run test:sample                  # local only: parity and round trip on the 
 | `src/convert.js` | Entry point: read zip → detect → convert → (Hamina fit) → write zip. Reports progress stages. |
 | `src/zip.js` | Hand-written zip reader/writer on the browser's `deflate-raw` streams. Rejects Zip64 and encryption. |
 | `src/detect.js` | `.esx` = top-level `floorPlans.json` + `project.json`; Open Intent = any top-level `.json` with `openintent_version`. |
-| `src/esx-to-oi.js` | JavaScript port of `esx2oi.py` (Apache-2.0). Must stay at exact parity with it; don't change float order, rounding or skip paths. One deliberate difference: each floor uses its own `image-<imageId>` when present. |
+| `src/esx-to-oi.js` | JavaScript port of `esx2oi.py` (Apache-2.0). Must stay at exact parity with it; don't change float order, rounding or skip paths. Two deliberate differences: each floor uses its own `image-<imageId>` when present, and the wall files (`wallSegments.json`, `wallPoints.json`, `wallTypes.json`) are optional, because Ekahau leaves them out when no walls are drawn (`esx2oi.py` stops with "missing"). |
 | `src/fit-image.js` | Shrinks plans over 8000 px for Hamina (see below). Runs after the port, so parity is unaffected. |
 | `src/oi-to-esx.js` | Open Intent → `.esx`: floors, walls, APs, radios, antenna types. |
 | `src/antennas.js`, `src/antenna-library.json` | Real antenna patterns by vendor/model/band, or a generated flat "generic omni" pattern. |

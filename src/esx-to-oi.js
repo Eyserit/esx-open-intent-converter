@@ -280,9 +280,10 @@ export async function esxToOi(
   { prefix = '[Imported] ', fallbackVendor = 'ubiquiti', fallbackModel = 'uap-ac-pro', onProgress = () => {} } = {},
 ) {
   const floors = readRequiredList(entries, 'floorPlans.json', 'floorPlans');
-  const wallSegments = readRequiredList(entries, 'wallSegments.json', 'wallSegments');
-  const wallPoints = byId(readRequiredList(entries, 'wallPoints.json', 'wallPoints'));
-  const wallTypes = byId(readRequiredList(entries, 'wallTypes.json', 'wallTypes'));
+  // esx2oi.py requires the wall files, but Ekahau leaves them out when no walls are drawn.
+  const wallSegments = readOptionalList(entries, 'wallSegments.json', 'wallSegments');
+  const wallPoints = byId(readOptionalList(entries, 'wallPoints.json', 'wallPoints'));
+  const wallTypes = byId(readOptionalList(entries, 'wallTypes.json', 'wallTypes'));
   const esxAps = readOptionalList(entries, 'accessPoints.json', 'accessPoints');
   const metersPerUnit = Object.fromEntries(floors.map((f) => [f.id, Number(f.metersPerUnit || 0)]));
   const projectTitle = readProjectTitle(entries);

@@ -132,6 +132,16 @@ test('esxToOi matches esx2oi.py output for the fixture, key order included', asy
   assert.deepEqual([...images.keys()], Object.keys(expected.images));
 });
 
+test('esxToOi converts a design with no walls drawn, which has no wall files', async () => {
+  const entries = await fixtureEntries();
+  for (const name of ['wallSegments.json', 'wallPoints.json', 'wallTypes.json']) entries.delete(name);
+  const { openintent } = await esxToOi(entries, nodeImageTools);
+  assert.deepEqual(openintent.wall_materials, []);
+  assert.ok(openintent.floorplans.length > 0);
+  assert.ok(openintent.floorplans.every((floor) => floor.wall_segments.length === 0));
+  assert.equal(openintent.accesspoints.length, expected.openintent.accesspoints.length);
+});
+
 test('esxToOi names the required file that is missing', async () => {
   const entries = await fixtureEntries();
   entries.delete('floorPlans.json');
