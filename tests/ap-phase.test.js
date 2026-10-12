@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runApPhase } from '../src/ap-phase.js';
-import { cornersFor } from '../src/geo.js';
+import { apLatLng, cornersFor } from '../src/geo.js';
 import { apListError } from '../src/meraki-messages.js';
 
 const centre = { lat: 53.34, lng: -6.26 };
@@ -31,6 +31,19 @@ test('a matched AP on an uploaded floor is placed at its design position', async
   const { topLeft } = cornersFor({ center: centre, widthM: 40, lengthM: 30, rotation: 0 });
   assert.deepEqual(placed, [{ serial: 'Q1', ...topLeft, floorPlanId: 'fp1' }]);
   assert.deepEqual(results, [{ name: 'AP-1', outcome: 'placed', by: 'name', merakiName: 'AP-1' }]);
+});
+
+test("an AP on the second floor is placed with that floor's own plan, size and position", async () => {
+  const floors = [floor, { name: 'First', widthM: 20, lengthM: 10 }];
+  const second = { center: { lat: 53.5, lng: -6.1 }, rotation: 30 };
+  const { placed } = await run({
+    designAps: [design('Up', 4, 6, { floorName: 'First' })],
+    floors,
+    uploaded: new Map([[0, uploadedAt('fp0')], [1, { floorPlanId: 'fp1', placement: second }]]),
+    listAccessPoints: async () => ({ accessPoints: [meraki('Q1', 'Up')], floorPlans: [] }),
+  });
+  const position = apLatLng({ ...second, widthM: 20, lengthM: 10 }, 4, 6);
+  assert.deepEqual(placed, [{ serial: 'Q1', ...position, floorPlanId: 'fp1' }]);
 });
 
 test('APs that aren\'t yours or whose floor wasn\'t uploaded are skipped with a reason', async () => {
