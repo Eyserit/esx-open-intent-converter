@@ -1,6 +1,6 @@
 # Handoff: Ekahau .esx ⇄ Open Intent converter
 
-Last updated 2026-10-11. Read this first when picking the project up in a new session.
+Last updated 2026-10-12. Read this first when picking the project up in a new session.
 
 ## What it is
 
@@ -15,14 +15,17 @@ A single static web page that converts one dropped file between an Ekahau `.esx`
 
 - Follow the build method in `/Users/joseph.leonard/Desktop/Claude/CLAUDE.md`: test-first, one failing test at a time, `structure:` / `behavior:` commit prefixes, never weaken a test, run the code-simplifier before finishing.
 - **The repo is public.** Never commit a real design, a floor plan, or anything derived from one (names, images, coordinates). `.gitignore` blocks every `.esx` except `tests/fixtures/`. The only real-design data allowed is the antenna patterns in `src/antenna-library.json` (agreed as public).
-- Plain HTML/CSS/JS ES modules. No npm packages, no build step, no third-party JS. The only external request is the Geist font from Google Fonts.
+- Plain HTML/CSS/JS ES modules. No npm packages, no build step. The only third-party JS is Leaflet 1.9.4, vendored unchanged in `vendor/leaflet/` (see its `SOURCE.md`). The public site's only external request is the Geist font from Google Fonts. The local Meraki flow also calls OpenStreetMap tiles and Nominatim.
+- The Meraki upload is local only (`npm start`). The GitHub Pages site must keep working without the server, so the Meraki step must stay hidden there.
 - Pushing to `main` deploys the live site within about a minute. Ask the user before pushing.
 
 ## Running and testing
 
 ```sh
-python3 -m http.server 8000          # then open http://localhost:8000
-npm test                             # 130 tests, node:test, no packages (Node 22+, built on Node 26)
+python3 -m http.server 8000          # converter only, then open http://localhost:8000
+npm start                            # converter plus the Meraki relay on http://localhost:8000 (PORT overrides)
+PORT=8123 node tools/fake-meraki.mjs # page against a fake Meraki, API key test-key
+npm test                             # 202 tests, node:test, no packages (Node 22+, built on Node 26)
 npm run check                        # node --check on every .js/.mjs
 npm run test:sample                  # local only: parity and round trip on the private sample
 ```
@@ -45,6 +48,15 @@ npm run test:sample                  # local only: parity and round trip on the 
 | `src/antennas.js`, `src/antenna-library.json` | Real antenna patterns by vendor/model/band, or a generated flat "generic omni" pattern. |
 | `src/messages.js` | All card copy (pure, tested). |
 | `src/browser-images.js` | Canvas-based decode / PNG encode / resize. Node tests use `tests/helpers/node-images.js` instead. |
+| `server/start.js`, `server/server.js` | `npm start`. Static files plus POST routes, bound to 127.0.0.1 only. 100 MB body cap. |
+| `server/meraki-routes.js` | The `/api/...` routes (organisations, networks, floor plans, upload). Pure validation, then the client. |
+| `server/meraki-client.js`, `server/meraki-request.js` | Calls to the Dashboard API: paging, retries on rate limits, upload. The relay refuses redirects and paging URLs outside the region's https domain. |
+| `meraki-flow.js` | Browser side of the Send to Meraki steps (key, network, floors, map, Uploading, Finished). Uploading has no Back, by design. Finished has Disconnect, which returns to the Done card with the download kept. |
+| `map-place.js` | The Leaflet map dialog: search, drag, rotate. |
+| `src/meraki-regions.js`, `src/meraki-messages.js` | Region list and the flow's card copy (pure, tested). |
+| `src/floors.js`, `src/floor-plan-match.js`, `src/geo.js` | Pure helpers: floor selection, exact-name matching and duplicate detection, outline corners and rotation maths. |
+| `tools/fake-meraki.mjs` | Fake Meraki behind the real routes. A floor named "Rate" gets a rate-limit error on its first upload. |
+| `vendor/leaflet/` | Leaflet 1.9.4 with its licence. |
 | `src/errors.js` | Only `NotSupportedError` and `ConversionError(reason)` may escape `convert()`. Reasons are standalone phrases shown after "…couldn't be converted: ". |
 | `esx2oi.py`, `LICENSE` | The reference implementation, kept for attribution and the parity tests. Not loaded by the page. |
 
@@ -67,6 +79,17 @@ Design docs: `docs/superpowers/specs/2026-10-11-wireless-design-converter-design
 **Hamina:**
 - Hamina shrinks floor plan images larger than 8000 px but keeps reading AP and wall pixel positions against the original size, so everything lands too far from the corner (24% on a 9954 px plan). `esx2oi.py` has the same bug. `src/fit-image.js` caps the longest side at 8000 px and scales every pixel value to match; metres and feet stay, with the height adjusted to keep one scale (a ~2 cm change on a 430 m plan). Whether Hamina's limit is width or longest side is unconfirmed; capping the longest side is safe either way.
 
+**Meraki Dashboard (floor plans):**
+- Two adjacent corners rotate the plan. `center` alone doesn't rotate it.
+- A PUT with a new image and no position re-centres the plan with no rotation, so we always send corners.
+- Meraki documents no image size limit. We cap uploads at 100 MB ourselves.
+- Reading geo data from Ekahau or Open Intent to pre-place a floor is not done.
+
+**Map services:**
+- OpenStreetMap tiles need attribution, a normal Referer and no prefetching.
+- Nominatim allows at most one request a second. Search on Enter only, no autocomplete.
+- Esri's keyless imagery terms are unclear, so satellite imagery was dropped.
+
 **Browser caching:** GitHub Pages sends `max-age=600`, so after a deploy a browser can run old code for up to 10 minutes. Test fixes in a private window, or check the download size and image dimensions.
 
 ## Known gaps and possible next steps
@@ -79,8 +102,11 @@ Design docs: `docs/superpowers/specs/2026-10-11-wireless-design-converter-design
 6. **More AP models:** `node tools/add-antennas.mjs "<path to .esx>"` copies only antenna patterns into the library. Check `git diff` before committing; the library is public.
 7. Minor: `defaultAntennas` order is TWO, FIVE, SIX (Ekahau accepted it); case variants of a vendor name create duplicate antenna types (harmless).
 
+8. **Meraki upload gaps:** paging has no page cap; the Nominatim response isn't validated beyond `ok`; the fake server's 401 always says "(Global)".
+
 ## Recent history
 
 - Built test-first through a 13-task plan, with a review after every task and a whole-branch review at the end.
+- Added the local Send to Meraki Dashboard flow (spec `docs/superpowers/specs/2026-10-11-meraki-upload-design.md`).
 - Fixed after launch: Hamina misplacing APs and walls on plans over 8000 px (`src/fit-image.js`).
 - An early commit (the plan, before the design was cleaned up) contains the sample's floor name. The user chose to leave history as it is.

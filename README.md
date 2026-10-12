@@ -25,7 +25,31 @@ Anything else is rejected with an explicit error rather than guessed at.
 python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000.
+Then open http://localhost:8000. This serves the converter only. For the Meraki upload, use `npm start` (below).
+
+## Send floor plans to Meraki (local only)
+
+Run `npm start` and open http://localhost:8000. Set `PORT` to use another port. It needs Node 22 or later. The public site has no Meraki step.
+
+After a conversion, the Done card offers "Send to Meraki Dashboard". The flow:
+
+1. Paste a Dashboard API key and pick the region.
+2. Pick the organisation and the wireless network.
+3. Pick the floors to send.
+4. Place each floor on the map (search an address or drag the outline) and set its rotation.
+5. Upload. A floor is created, or updated if a floor plan with exactly the same name exists. The outline position and rotation are applied in Meraki.
+
+Floor plans only. APs are not placed.
+
+**What is stored and where data goes.** Files are converted in the browser and nothing is stored. The API key exists only in page memory and in the request that carries it, and goes only to Meraki. The local server relays requests to Meraki and keeps nothing.
+
+**Outside services.** The map uses OpenStreetMap tiles and Nominatim address search. They see your IP address and the area or text you search for. They never see your API key or your files.
+
+**Limits.** An uploaded file can be at most 100 MB. The cap applies to the public site too.
+
+**Checking the page without a real Dashboard.** `PORT=8123 node tools/fake-meraki.mjs` serves the page against a fake Meraki. Use the API key `test-key`.
+
+Leaflet 1.9.4 (BSD-2-Clause) is included unchanged in `vendor/leaflet/`, with its licence.
 
 ## Tests and checks
 
