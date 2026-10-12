@@ -11,7 +11,7 @@
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="app.js"></script>
 </head>
@@ -59,6 +59,28 @@
     <span>Ekahau .esx ⇄ Open Intent .zip</span>
     <span>No sign-up · Nothing stored</span>
   </footer>
+
+  <dialog id="map-dialog" class="map-dialog" aria-labelledby="map-title">
+    <div class="map-head">
+      <h2 id="map-title" class="map-title">Place <span id="map-floor" class="mono"></span></h2>
+      <button id="map-close" class="pill pill-small" type="button">Close</button>
+    </div>
+    <div class="map-search">
+      <label for="map-search">Search an address or paste coordinates</label>
+      <input id="map-search" type="search" autocomplete="off" spellcheck="false">
+      <p id="map-search-status" class="map-search-status" role="status"></p>
+    </div>
+    <div id="map" class="map"></div>
+    <div class="map-tools">
+      <label class="map-rotation" for="map-rotation">
+        Rotation
+        <input id="map-rotation" type="range" min="-180" max="180" step="0.5" value="0">
+        <output id="map-rotation-value" class="mono" for="map-rotation">0°</output>
+      </label>
+      <button id="map-done" class="pill pill-small pill-primary" type="button">Done</button>
+    </div>
+    <p class="map-hint">Drag the outline to move it and the round handle to rotate it. With the outline focused: arrows move it (Shift for 5 m), [ and ] rotate it.</p>
+  </dialog>
 
   <div id="status" class="visually-hidden" aria-live="polite"></div>
   <input id="file" type="file" hidden>

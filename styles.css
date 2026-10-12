@@ -31,6 +31,7 @@
   --focus: #ffc39a;
   --hairline: rgba(255, 255, 255, 0.07);
   --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 *,
@@ -362,7 +363,170 @@ main {
   border: 0;
 }
 
+.mono {
+  font-family: var(--mono);
+  font-size: 0.875em;
+}
+
+/* Map dialog: a near full-screen sheet in the card's surface */
+
+.map-dialog {
+  width: min(1100px, 100vw - 32px);
+  height: min(800px, 100dvh - 32px);
+  max-width: none;
+  max-height: none;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid var(--border-inner);
+  background: linear-gradient(180deg, var(--card-top), var(--card-bottom));
+  box-shadow: inset 0 1px 0 var(--highlight), 0 40px 80px -40px rgba(0, 0, 0, 0.85);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.map-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.map-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.map-head,
+.map-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.map-tools {
+  flex-wrap: wrap;
+}
+
+.map-title {
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.pill-small {
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 0.875rem;
+}
+
+.map-search label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.map-search input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
+  color: var(--text);
+  font: 400 0.9375rem var(--font);
+}
+
+.map-search input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.map-search-status {
+  margin: 6px 0 0;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.map-search-status:empty {
+  display: none;
+}
+
+.map {
+  flex: 1;
+  min-height: 200px;
+  border-radius: 16px;
+  border: 1px solid var(--hairline);
+  background: #e9e4dc;
+}
+
+.map-rotation {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+}
+
+.map-rotation input {
+  flex: 0 1 200px;
+  min-width: 0;
+  accent-color: var(--fill);
+}
+
+.map-rotation output {
+  min-width: 6ch;
+  color: var(--text);
+  text-align: right;
+}
+
+.map-hint {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+}
+
+/* Leaflet draws the outline's two handles as divIcons. */
+.map-centre,
+.map-rotate {
+  border-radius: 999px;
+  border: 2px solid #141210;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
+.map-centre {
+  background: #141210;
+  cursor: move;
+}
+
+.map-rotate {
+  background: #fff;
+  cursor: grab;
+}
+
+.map-centre:focus-visible,
+.map-rotate:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.map-outline {
+  cursor: move;
+  touch-action: none;
+}
+
 @media (max-width: 480px) {
+  .map-dialog {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+  }
+
   .card-inner {
     min-height: 260px;
     padding: 32px 18px 28px;

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cornersFor, parseCoordinates } from '../src/geo.js';
+import { cornersFor, parseCoordinates, offsetBy, bearingTo, wrapRotation } from '../src/geo.js';
 
 const EARTH_RADIUS_M = 6371008.8;
 const centre = { lat: 53.35, lng: -6.26 };
@@ -54,5 +54,32 @@ test('parses coordinates in common forms', () => {
 test('rejects text and out-of-range coordinates', () => {
   for (const text of ['Dublin', '91, 0', '0, 181', '', '1,2,3']) {
     assert.equal(parseCoordinates(text), null, text);
+  }
+});
+
+test('offsetBy moves a point the given metres east and north', () => {
+  for (const lat of [0, 53.35, 64]) {
+    const from = { lat, lng: -6.26 };
+    const east = offsetBy(from, 5, 0);
+    const north = offsetBy(from, 0, 5);
+    assert.ok(Math.abs(metresBetween(from, east) - 5) < 0.01, `east at lat ${lat}`);
+    assert.ok(east.lat === lat && east.lng > from.lng);
+    assert.ok(Math.abs(metresBetween(from, north) - 5) < 0.01, `north at lat ${lat}`);
+    assert.ok(north.lng === from.lng && north.lat > lat);
+  }
+});
+
+test('bearingTo gives degrees clockwise from north, from -180 to 180', () => {
+  const cases = [[0, 10, 0], [10, 0, 90], [0, -10, 180], [-10, 0, -90], [10, 10, 45], [-10, -10, -135]];
+  for (const [eastM, northM, expected] of cases) {
+    const bearing = bearingTo(centre, offsetBy(centre, eastM, northM));
+    assert.ok(Math.abs(bearing - expected) < 1e-9, `${eastM} E, ${northM} N gave ${bearing}`);
+  }
+});
+
+test('wrapRotation keeps a rotation within the slider range', () => {
+  const cases = [[0, 0], [179, 179], [180, 180], [181, -179], [-180, -180], [-181, 179], [540, 180], [-12.5, -12.5]];
+  for (const [rotation, expected] of cases) {
+    assert.equal(wrapRotation(rotation), expected, `${rotation}`);
   }
 });

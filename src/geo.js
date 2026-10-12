@@ -17,6 +17,25 @@ export function cornersFor({ center, widthM, lengthM, rotation }) {
   return { topLeft: at(-w, l), topRight: at(w, l), bottomRight: at(w, -l), bottomLeft: at(-w, -l) };
 }
 
+export function offsetBy(center, eastM, northM) {
+  return {
+    lat: center.lat + northM / METRES_PER_DEGREE_LAT,
+    lng: center.lng + eastM / (METRES_PER_DEGREE_LAT * Math.cos((center.lat * Math.PI) / 180)),
+  };
+}
+
+export function bearingTo(from, to) {
+  const northM = (to.lat - from.lat) * METRES_PER_DEGREE_LAT;
+  const eastM = (to.lng - from.lng) * METRES_PER_DEGREE_LAT * Math.cos((from.lat * Math.PI) / 180);
+  return (Math.atan2(eastM, northM) * 180) / Math.PI;
+}
+
+// The slider runs from -180 to 180 inclusive, so values already in range are left alone.
+export function wrapRotation(rotation) {
+  if (rotation >= -180 && rotation <= 180) return rotation;
+  return rotation - 360 * Math.ceil((rotation - 180) / 360);
+}
+
 const DECIMAL = /^-?\d+(\.\d+)?$/;
 
 export function parseCoordinates(text) {
