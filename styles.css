@@ -480,7 +480,8 @@ main {
   font: 400 0.9375rem var(--font);
 }
 
-.field select.mono {
+.field select.mono,
+.field input.mono {
   font-family: var(--mono);
   font-size: 0.875rem;
 }
@@ -551,6 +552,12 @@ main {
   flex: 1;
   min-width: 10ch;
   overflow-wrap: anywhere;
+}
+
+/* The name field takes its own line, lined up with the floor name past the checkbox. */
+.floor-row .field {
+  flex-basis: 100%;
+  padding-left: 30px;
 }
 
 .floor-name .mono {

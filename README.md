@@ -36,6 +36,7 @@ After a conversion, the Done card offers "Send to Meraki". The flow:
 1. Pick the region, then paste a Dashboard API key.
 2. Pick the organisation and the wireless network.
 3. Pick the floors to send.
+   Each floor has a "Name in Meraki", suggested from its name. Meraki allows up to 25 characters: letters, numbers, spaces, - and _.
 4. Place each floor on the map (search an address, drag the outline, or use "Move outline here") and set its rotation.
 5. Upload. A floor is created, or updated if a floor plan with exactly the same name exists. The outline position and rotation are applied in Meraki.
 

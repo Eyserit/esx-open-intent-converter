@@ -99,6 +99,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   const floors = listFloors(openintent.design, openintent.images);
   const placements = new Map();
   const unticked = new Set();
+  // Names typed for Meraki, by the floor's own name; kept so Back to floors shows them again.
+  const names = new Map();
   let lastPlacedCenter = null;
   let organizations = [];
   let organizationId = null;
@@ -233,22 +235,27 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     loadNetworks();
   }
 
+  // Built once and then updated in place, so typing a name never moves focus out of its input.
   function floorItem(row, index, refresh) {
-    const box = el('input', {
-      type: 'checkbox', id: `meraki-floor-${index}`, checked: row.ticked, disabled: row.action === 'blocked',
-    });
-    const what = row.reason ? `${ACTION_LABELS[row.action]} · ${row.reason}` : ACTION_LABELS[row.action];
+    const box = el('input', { type: 'checkbox', id: `meraki-floor-${index}` });
+    const what = el('small');
     // The hidden comma keeps the name and the action apart when the label is read as one string.
     const separator = el('span', { className: 'visually-hidden', textContent: ', ' });
-    const label = el('label', { className: 'floor-name', htmlFor: box.id },
-      mono(row.name), separator, el('small', { textContent: what }));
-    const item = el('li', { className: 'floor-row' }, box, label);
-    if (row.action === 'blocked') return { item, update() {} };
-
+    const label = el('label', { className: 'floor-name', htmlFor: box.id }, mono(row.name), separator, what);
     const tag = el('span', { className: 'tag' });
     const place = el('button', { className: 'pill pill-small', type: 'button' });
-    item.append(tag, place);
+    const nameInput = el('input', {
+      type: 'text', className: 'mono', value: row.merakiName, autocomplete: 'off', spellcheck: false,
+    });
+    const nameProblem = el('p', { className: 'field-error', id: `meraki-floor-name-${index}-problem` });
+    nameInput.setAttribute('aria-describedby', nameProblem.id);
+    const nameField = field(`meraki-floor-name-${index}`, 'Name in Meraki', nameInput, nameProblem);
+    const item = el('li', { className: 'floor-row' }, box, label, tag, place, nameField);
 
+    nameInput.addEventListener('input', () => {
+      names.set(row.name, nameInput.value);
+      refresh();
+    });
     box.addEventListener('change', () => {
       if (box.checked) unticked.delete(row.name);
       else unticked.add(row.name);
@@ -263,7 +270,15 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       refresh();
     });
 
-    function update({ placed }) {
+    function update({ action, reason, ticked, placed, nameProblem: problem }) {
+      const blocked = action === 'blocked';
+      box.checked = ticked;
+      box.disabled = blocked;
+      what.textContent = reason ? `${ACTION_LABELS[action]} · ${reason}` : ACTION_LABELS[action];
+      tag.hidden = blocked;
+      place.hidden = blocked;
+      nameProblem.textContent = problem ?? '';
+      nameInput.setAttribute('aria-invalid', String(problem !== null));
       tag.textContent = placed ? 'Placed' : 'Not placed yet';
       tag.classList.toggle('tag-placed', placed);
       place.textContent = placed ? 'Edit' : 'Place on map';
@@ -279,7 +294,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     upload.setAttribute('aria-describedby', hint.id);
 
     function refresh() {
-      const rows = floorRows(floors, plans, placements, unticked);
+      const rows = floorRows(floors, plans, placements, unticked, names);
       rows.forEach((row, i) => items[i].update(row));
       const button = uploadButton(rows);
       upload.textContent = button.label;
@@ -289,7 +304,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       return { rows, enabled: button.enabled };
     }
 
-    const items = floorRows(floors, plans, placements, unticked).map((row, i) => floorItem(row, i, refresh));
+    const items = floorRows(floors, plans, placements, unticked, names).map((row, i) => floorItem(row, i, refresh));
     upload.addEventListener('click', () => {
       const { rows, enabled } = refresh();
       if (enabled) uploadStep(rows);
@@ -306,13 +321,13 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     );
   }
 
-  async function uploadFloor(floor) {
+  async function uploadFloor(floor, merakiName) {
     const { center, rotation } = placements.get(floor.name);
     const { topLeft, topRight } = cornersFor({ center, widthM: floor.widthM, lengthM: floor.lengthM, rotation });
     try {
       const { action } = await api('api/floor-plans/upload', {
         networkId: network.id,
-        name: floor.name,
+        name: merakiName,
         imageContents: floor.image.bytes.toBase64(),
         topLeftCorner: topLeft,
         topRightCorner: topRight,
@@ -324,23 +339,24 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   }
 
   async function uploadStep(rows) {
-    const chosen = floors.filter((_, i) => rows[i].ticked);
+    // Results keep the floor's own name, which is what unticked and placements are keyed by.
+    const chosen = floors.flatMap((floor, i) => (rows[i].ticked ? [{ floor, merakiName: rows[i].merakiName }] : []));
     const progress = detail('');
     const tags = chosen.map(() => el('span', { className: 'tag', textContent: 'Waiting' }));
-    const list = el('ul', { className: 'floor-list' }, ...chosen.map((floor, i) =>
-      el('li', { className: 'floor-row' }, el('span', { className: 'floor-name' }, mono(floor.name)), tags[i])));
+    const list = el('ul', { className: 'floor-list' }, ...chosen.map(({ merakiName }, i) =>
+      el('li', { className: 'floor-row' }, el('span', { className: 'floor-name' }, mono(merakiName)), tags[i])));
     showStep(heading('Uploading to ', mono(network.name)), progress, list);
 
     const results = [];
-    for (const [i, floor] of chosen.entries()) {
+    for (const [i, { floor, merakiName }] of chosen.entries()) {
       progress.textContent = `${i} of ${chosen.length} floors done`;
       tags[i].textContent = 'Uploading…';
-      announce(`Uploading ${floor.name}, ${i + 1} of ${chosen.length}.`);
-      const result = await uploadFloor(floor);
+      announce(`Uploading ${merakiName}, ${i + 1} of ${chosen.length}.`);
+      const result = await uploadFloor(floor, merakiName);
       tags[i].textContent = result.label;
       tags[i].classList.toggle('tag-placed', result.outcome !== 'failed');
       tags[i].classList.toggle('tag-failed', result.outcome === 'failed');
-      announce(`${floor.name}: ${result.label}`);
+      announce(`${merakiName}: ${result.label}`);
       results.push(result);
     }
     finishedStep(results, list);
