@@ -134,10 +134,10 @@ test('esxToOi matches esx2oi.py output for the fixture, key order included', asy
 
 test('esxToOi names the required file that is missing', async () => {
   const entries = await fixtureEntries();
-  entries.delete('wallSegments.json');
+  entries.delete('floorPlans.json');
   await assert.rejects(
     esxToOi(entries, nodeImageTools),
-    (err) => err instanceof ConversionError && err.reason === 'missing wallSegments.json',
+    (err) => err instanceof ConversionError && err.reason === 'missing floorPlans.json',
   );
 });
 
