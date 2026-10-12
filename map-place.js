@@ -175,11 +175,20 @@ export function placeFloor({ floor, start, near }) {
       if (!signal.aborted) searchStatus.textContent = SEARCH_UNAVAILABLE;
       return;
     }
+    if (!Array.isArray(results)) {
+      searchStatus.textContent = SEARCH_UNAVAILABLE;
+      return;
+    }
     if (results.length === 0) {
       searchStatus.textContent = SEARCH_NO_MATCH;
       return;
     }
-    flyTo({ lat: Number(results[0].lat), lng: Number(results[0].lon) });
+    const found = { lat: Number(results[0]?.lat), lng: Number(results[0]?.lon) };
+    if (!Number.isFinite(found.lat) || !Number.isFinite(found.lng)) {
+      searchStatus.textContent = SEARCH_UNAVAILABLE;
+      return;
+    }
+    flyTo(found);
   }
 
   redraw();
@@ -193,7 +202,10 @@ export function placeFloor({ floor, start, near }) {
     if (event.key !== 'Enter' || event.isComposing) return;
     event.preventDefault();
     const query = searchBox.value.trim();
-    if (query) search(query, signal);
+    if (!query) return;
+    search(query, signal).catch(() => {
+      if (!signal.aborted) searchStatus.textContent = SEARCH_UNAVAILABLE;
+    });
   }, { signal });
   document.getElementById('map-move-here').addEventListener('click', () => setCenter(map.getCenter()), { signal });
 
