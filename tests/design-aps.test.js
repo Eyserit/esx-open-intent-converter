@@ -1,7 +1,7 @@
 // Synthetic entries only; nothing here comes from a real design.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { designApsFromEsx } from '../src/design-aps.js';
+import { designApsFromEsx, designApsFromOpenIntent } from '../src/design-aps.js';
 
 const json = (value) => new TextEncoder().encode(JSON.stringify(value));
 function esxEntries({ floors, aps, radios, measurements }) {
@@ -71,4 +71,27 @@ test('a predictive design with no survey files gives every AP no BSSIDs', () => 
 
 test('a missing accessPoints.json gives no APs', () => {
   assert.deepEqual(designApsFromEsx(new Map()), []);
+});
+
+const oiFloor = { name: 'Ground', dimensions: [{ unit: 'meters', width: 20, length: 15 }, { unit: 'pixels', width: 400, length: 300 }] };
+const oiAp = (name, coordinates, floorplan_name = 'Ground') => ({ name, floorplan_name, coordinates });
+
+test('an Open Intent AP uses its metre coordinate with y flipped back to the top', () => {
+  const design = { floorplans: [oiFloor], accesspoints: [oiAp('AP-1', [{ coordinate_xyz: { x: 5, y: 12, z: 2.5, unit: 'meters' } }])] };
+  assert.deepEqual(designApsFromOpenIntent(design), [{ name: 'AP-1', floorName: 'Ground', xM: 5, yM: 3, mine: true, bssids: [] }]);
+});
+
+test("without a metre coordinate the pixel one is scaled by the floor's width", () => {
+  const design = { floorplans: [oiFloor], accesspoints: [oiAp('AP-1', [{ coordinate_xyz: { x: 100, y: 240, z: 0, unit: 'pixels' } }])] };
+  assert.deepEqual(designApsFromOpenIntent(design), [{ name: 'AP-1', floorName: 'Ground', xM: 5, yM: 3, mine: true, bssids: [] }]);
+});
+
+test('an Open Intent AP on a floor with no metre size, or with no coordinates, is left out', () => {
+  const pixelsOnly = { name: 'Flat', dimensions: [{ unit: 'pixels', width: 400, length: 300 }] };
+  const at = [{ coordinate_xyz: { x: 5, y: 12, z: 0, unit: 'meters' } }];
+  const design = {
+    floorplans: [oiFloor, pixelsOnly],
+    accesspoints: [oiAp('NoMetres', at, 'Flat'), oiAp('NoCoords', []), oiAp('NoFloor', at, 'Nope'), oiAp('Kept', at)],
+  };
+  assert.deepEqual(designApsFromOpenIntent(design).map((ap) => ap.name), ['Kept']);
 });

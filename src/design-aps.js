@@ -45,3 +45,27 @@ export function designApsFromEsx(entries) {
   });
   return aps;
 }
+
+const dimensionIn = (floor, unit) => floor.dimensions?.find((d) => d.unit === unit);
+const coordinateIn = (ap, unit) => ap.coordinates?.map((c) => c.coordinate_xyz).find((c) => c?.unit === unit);
+
+function positionOnFloor(ap, floor) {
+  const metres = floor && dimensionIn(floor, 'meters');
+  if (!metres) return null;
+  const inMetres = coordinateIn(ap, 'meters');
+  if (inMetres) return { xM: inMetres.x, yM: metres.length - inMetres.y };
+  const pixels = dimensionIn(floor, 'pixels');
+  const inPixels = coordinateIn(ap, 'pixels');
+  if (!pixels || !inPixels) return null;
+  const scale = metres.width / pixels.width;
+  return { xM: inPixels.x * scale, yM: metres.length - inPixels.y * scale };
+}
+
+export function designApsFromOpenIntent(design) {
+  const floors = new Map((design.floorplans ?? []).map((f) => [f.name, f]));
+  return (design.accesspoints ?? []).flatMap((ap) => {
+    const position = positionOnFloor(ap, floors.get(ap.floorplan_name));
+    if (!position) return [];
+    return [{ name: ap.name, floorName: ap.floorplan_name, ...position, mine: true, bssids: [] }];
+  });
+}
