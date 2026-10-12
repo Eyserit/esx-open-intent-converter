@@ -19,8 +19,9 @@ const REFERENCE_SCRIPT = new URL('../esx2oi.py', import.meta.url).pathname;
 const library = JSON.parse(readFileSync(new URL('../src/antenna-library.json', import.meta.url), 'utf8'));
 const options = { imageTools: nodeImageTools, library };
 
+const skip = existsSync(SAMPLE_PATH) ? false : 'ekahau_sample.esx not found (local-only check)';
+
 function readSample() {
-  assert.ok(existsSync(SAMPLE_PATH), 'ekahau_sample.esx not found (local-only check)');
   return new Uint8Array(readFileSync(SAMPLE_PATH));
 }
 
@@ -34,7 +35,7 @@ async function pixelSizes(images) {
 }
 
 // Parity is with the port itself: convert() then shrinks plans over 8000 px for Hamina, which esx2oi.py doesn't.
-test('sample: esxToOi() matches esx2oi.py, key order included', async () => {
+test('sample: esxToOi() matches esx2oi.py, key order included', { skip }, async () => {
   const sample = readSample();
   const workDir = await mkdtemp(join(tmpdir(), 'sample-parity-'));
   try {
@@ -52,14 +53,14 @@ test('sample: esxToOi() matches esx2oi.py, key order included', async () => {
   }
 });
 
-test('sample: convert() shrinks the 9954 px plan to 8000 px for Hamina', async () => {
+test('sample: convert() shrinks the 9954 px plan to 8000 px for Hamina', { skip }, async () => {
   const { design, images } = await readOpenIntentZip((await convert(readSample(), 'sample.esx', options)).bytes);
   assert.deepEqual(Object.values(await pixelSizes(images)), [[8000, 4576]]);
   const pixels = design.floorplans[0].dimensions.find((d) => d.unit === 'pixels');
   assert.deepEqual([pixels.width, pixels.length], [8000, 4576]);
 });
 
-test('sample: Open Intent -> .esx -> Open Intent comes back the same', async () => {
+test('sample: Open Intent -> .esx -> Open Intent comes back the same', { skip }, async () => {
   const first = await convert(readSample(), 'sample.esx', options);
   const esx = await convert(first.bytes, 'sample.zip', options);
   const second = await convert(esx.bytes, 'sample.esx', options);
