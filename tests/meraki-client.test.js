@@ -51,6 +51,22 @@ test('a Link page outside the domain is refused', async () => {
   assert.equal(calls.length, 1);
 });
 
+test('paging stops after 100 pages with the generic error', async () => {
+  let calls = 0;
+  async function fetch() {
+    calls += 1;
+    // The links run out well past the cap only so a missing cap fails the test instead of hanging it.
+    const headers = calls < 1000 ? { Link: `<https://n1.meraki.com/api/v1/organizations?startingAfter=${calls}>; rel=next` } : {};
+    return new Response(JSON.stringify([{ id: String(calls), name: 'Org' }]), { status: 200, headers });
+  }
+  const client = createMerakiClient({ fetch, sleep: async () => {} });
+  await assert.rejects(
+    client.listOrganizations(ctx),
+    (err) => err.status === 502 && err.message === 'Something went wrong talking to Meraki.',
+  );
+  assert.equal(calls, 100);
+});
+
 test('only wireless networks are returned, with their Dashboard url', async () => {
   const { client, calls } = setup([
     {

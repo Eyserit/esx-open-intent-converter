@@ -5,6 +5,8 @@ import { GENERIC_MESSAGE, MerakiError, createRequest, isWithinDomain } from './m
 export { MerakiError } from './meraki-request.js';
 
 const NEXT_LINK = /<([^>]*)>\s*;\s*rel="?next"?/;
+// A broken or hostile server could link pages forever.
+const MAX_PAGES = 100;
 
 function nextPageUrl(linkHeader, domain) {
   const match = NEXT_LINK.exec(linkHeader ?? '');
@@ -26,7 +28,8 @@ export function createMerakiClient({ fetch, sleep }) {
   async function getAllPages(ctx, path) {
     const items = [];
     let target = path;
-    while (target) {
+    for (let page = 0; target; page++) {
+      if (page === MAX_PAGES) throw new MerakiError(502, GENERIC_MESSAGE);
       const { json, headers } = await request(ctx, 'GET', target);
       items.push(...json);
       target = nextPageUrl(headers.get('Link'), REGIONS[ctx.region].domain);
