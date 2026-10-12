@@ -48,6 +48,17 @@ test('a chosen name is trimmed before it is checked, matched and sent', () => {
   assert.equal(row.merakiName, 'Lobby');
 });
 
+test('two floors with the same invalid name show only the name problem', () => {
+  const rows = floorRows([floor('A'), floor('B')], [], placed(0, 1), new Set(), new Map([[0, ''], [1, ' ']]));
+  for (const row of rows) {
+    assert.equal(row.action, 'create');
+    assert.equal(row.reason, null);
+    assert.equal(row.ticked, true);
+    assert.equal(row.nameProblem, 'Enter a name.');
+  }
+  assert.equal(uploadButton(rows).hint, 'Fix the floor names first.');
+});
+
 test('renaming a floor to an existing plan updates it, and renaming it back creates', () => {
   const plans = [{ id: '1', name: 'Lobby' }];
   const rowNamed = (name) => floorRows([floor('Ground')], plans, placed(0), new Set(), new Map([[0, name]]))[0];
