@@ -129,6 +129,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   };
 
   const currentPlacements = () => effectivePlacements(placements, { ...building, count: floors.length });
+  const currentRows = () => floorRows(floors, plans, currentPlacements(), unticked, names);
 
   function exit() {
     apiKey = null;
@@ -312,7 +313,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       refresh();
     });
     place.addEventListener('click', async () => {
-      const reference = buildingReferenceIndex(floors, floorRows(floors, plans, currentPlacements(), unticked, names));
+      const reference = buildingReferenceIndex(floors, currentRows());
       if (reference === null) return;
       const { name, widthM, lengthM } = floors[reference];
       const placed = await placeFloor({ floor: { name, widthM, lengthM }, start: building.placement, near: lastPlacedCenter });
@@ -338,7 +339,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     upload.setAttribute('aria-describedby', hint.id);
 
     function refresh() {
-      const rows = floorRows(floors, plans, currentPlacements(), unticked, names);
+      const rows = currentRows();
       rows.forEach((row, i) => items[i].update(row));
       controls?.update(rows);
       const button = uploadButton(rows, { together: building.together });
@@ -349,7 +350,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       return { rows, enabled: button.enabled };
     }
 
-    const items = floorRows(floors, plans, currentPlacements(), unticked, names).map((row, i) => floorItem(row, i, refresh));
+    const items = currentRows().map((row, i) => floorItem(row, i, refresh));
     // Only a design with several floors can be placed as one building.
     const controls = floors.length >= 2 ? buildingControls(refresh) : null;
     upload.addEventListener('click', () => {
