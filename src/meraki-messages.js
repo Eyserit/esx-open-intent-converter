@@ -52,12 +52,10 @@ export function effectivePlacements(placements, building) {
 
 // The floor whose outline stands in for the whole building on the map.
 export function buildingReferenceIndex(floors, rows) {
-  let best = null;
-  floors.forEach((floor, i) => {
-    const area = floor.widthM * floor.lengthM;
-    if (best === null || area > floors[best].widthM * floors[best].lengthM) best = i;
-  });
-  return best;
+  const area = (i) => floors[i].widthM * floors[i].lengthM;
+  // A blocked row is never ticked, so ticked alone means ticked and unblocked.
+  const candidates = floors.flatMap((floor, i) => (rows[i].ticked ? [i] : []));
+  return candidates.reduce((best, i) => (best === null || area(i) > area(best) ? i : best), null);
 }
 
 export const ACTION_LABELS = { create: 'Create', update: 'Update existing', blocked: "Can't upload" };

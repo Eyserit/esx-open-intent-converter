@@ -211,9 +211,16 @@ test('with the floors placed one by one, each floor keeps its own placement and 
   assert.equal(effectivePlacements(placements, building), placements);
 });
 
-const sized = (widthM, lengthM, problem = null) => ({ name: 'F', widthM, lengthM, image: null, problem });
+// Each floor gets its own name, so none is blocked as a repeat.
+const sizedFloors = (...sizes) => sizes.map(([widthM, lengthM, problem = null], i) =>
+  ({ name: `Floor ${i}`, widthM, lengthM, image: null, problem }));
 
 test('the building is placed with the outline of the largest ticked floor', () => {
-  const floors = [sized(10, 10), sized(20, 30), sized(15, 15)];
+  const floors = sizedFloors([10, 10], [20, 30], [15, 15]);
   assert.equal(buildingReferenceIndex(floors, floorRows(floors, [], new Map(), new Set())), 1);
+});
+
+test('a blocked or unticked floor is not the building outline while a ticked one qualifies', () => {
+  const floors = sizedFloors([10, 10], [50, 50, 'The floor image is missing.'], [40, 40], [20, 20]);
+  assert.equal(buildingReferenceIndex(floors, floorRows(floors, [], new Map(), new Set([2]))), 3);
 });
