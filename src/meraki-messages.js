@@ -53,9 +53,10 @@ export function effectivePlacements(placements, building) {
 // The floor whose outline stands in for the whole building on the map.
 export function buildingReferenceIndex(floors, rows) {
   const area = (i) => floors[i].widthM * floors[i].lengthM;
+  const largest = (indexes) => indexes.reduce((best, i) => (best === null || area(i) > area(best) ? i : best), null);
+  const sized = floors.flatMap((floor, i) => (floor.widthM === null ? [] : [i]));
   // A blocked row is never ticked, so ticked alone means ticked and unblocked.
-  const candidates = floors.flatMap((floor, i) => (rows[i].ticked ? [i] : []));
-  return candidates.reduce((best, i) => (best === null || area(i) > area(best) ? i : best), null);
+  return largest(sized.filter((i) => rows[i].ticked)) ?? largest(sized);
 }
 
 export const ACTION_LABELS = { create: 'Create', update: 'Update existing', blocked: "Can't upload" };

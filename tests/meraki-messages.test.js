@@ -224,3 +224,9 @@ test('a blocked or unticked floor is not the building outline while a ticked one
   const floors = sizedFloors([10, 10], [50, 50, 'The floor image is missing.'], [40, 40], [20, 20]);
   assert.equal(buildingReferenceIndex(floors, floorRows(floors, [], new Map(), new Set([2]))), 3);
 });
+
+test('with no ticked floor to use, the building outline is the largest floor that has a size in metres', () => {
+  const noSize = 'The floor has no size in metres.';
+  const floors = sizedFloors([10, 10], [null, null, noSize], [40, 40, 'The floor image is missing.'], [20, 20]);
+  assert.equal(buildingReferenceIndex(floors, floorRows(floors, [], new Map(), new Set([0, 3]))), 2);
+});
