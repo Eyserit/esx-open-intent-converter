@@ -3,6 +3,7 @@ import { detectFormat, findOpenIntentDesign } from './detect.js';
 import { esxToOi } from './esx-to-oi.js';
 import { fitImagesForHamina } from './fit-image.js';
 import { oiToEsx } from './oi-to-esx.js';
+import { designApsFromEsx, designApsFromOpenIntent } from './design-aps.js';
 import { NotSupportedError } from './errors.js';
 
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
@@ -30,7 +31,7 @@ async function convertEsx(entries, fileName, { imageTools, report }) {
     outputName: `${baseName(fileName)}.zip`,
     bytes: await writeZip(zipEntries),
     notes: [],
-    openintent: { design: openintent, images: new Map(images) },
+    openintent: { design: openintent, images: new Map(images), designAps: designApsFromEsx(entries) },
   };
 }
 
@@ -46,7 +47,7 @@ async function convertOpenIntent(entries, fileName, { library, report }) {
     outputName: `${baseName(fileName)}.esx`,
     bytes: await writeZip([...files]),
     notes,
-    openintent: { design, images: entries },
+    openintent: { design, images: entries, designAps: designApsFromOpenIntent(design) },
   };
 }
 

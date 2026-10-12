@@ -126,8 +126,18 @@ test('both directions hand back the Open Intent design and its images', async ()
   assert.equal(esxResult.openintent.design.floorplans[0].name, 'Ground');
   const path = esxResult.openintent.design.floorplans[0].map_uri.replace('file://', '');
   assert.ok(esxResult.openintent.images.get(path) instanceof Uint8Array);
+  assert.deepEqual(esxResult.openintent.designAps.map((ap) => ap.name), ['AP-A', 'AP-B', 'AP-C']);
 
   const oiResult = await convert(esxResult.bytes, 'a.zip', options);
   assert.equal(oiResult.openintent.design.floorplans[0].name, 'Ground');
   assert.ok(oiResult.openintent.images.get(path) instanceof Uint8Array);
+  assert.deepEqual(oiResult.openintent.designAps.map((ap) => ap.name), ['AP-A', 'AP-B', 'AP-C']);
+});
+
+test('a survey .esx carries its BSSIDs through convert', async () => {
+  const surveyFixture = new Uint8Array(readFileSync(new URL('./fixtures/survey-fixture.esx', import.meta.url)));
+  const { openintent } = await convert(surveyFixture, 's.esx', options);
+  assert.equal(openintent.designAps.length, 5);
+  const hall = openintent.designAps.find((ap) => ap.name === 'Design-Hall');
+  assert.deepEqual(hall.bssids, ['02:00:00:00:0b:01', '02:00:00:00:0b:02']);
 });
