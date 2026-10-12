@@ -53,6 +53,17 @@ test('a floor without metres is a problem', async () => {
   assert.equal(listFloors(design, images)[0].problem, 'The floor has no size in metres.');
 });
 
+test('a floor with a missing, empty or non-string name is a problem, before the image check', async () => {
+  const { design, images, floor, imagePath } = await groundPackage();
+  images.delete(imagePath);
+  for (const name of [undefined, '', 42]) {
+    floor.name = name;
+    const listed = listFloors(design, images)[0];
+    assert.equal(listed.problem, 'The floor has no name.');
+    assert.equal(listed.image, null);
+  }
+});
+
 test('a floor without map_uri is a problem', async () => {
   const { design, images, floor } = await groundPackage();
   delete floor.map_uri;

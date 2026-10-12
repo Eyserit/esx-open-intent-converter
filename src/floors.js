@@ -20,6 +20,7 @@ function describeFloor(floor, images) {
   const { widthM, lengthM } = metreSizeOf(floor);
   const bytes = floor.map_uri ? images.get(floor.map_uri.replace(/^file:\/\//, '')) : undefined;
   const base = { name: floor.name, widthM, lengthM };
+  if (typeof floor.name !== 'string' || floor.name === '') return { ...base, image: null, problem: 'The floor has no name.' };
   if (!bytes) return { ...base, image: null, problem: 'The floor image is missing.' };
   const type = imageTypeOf(bytes);
   if (!type) return { ...base, image: null, problem: "The floor image isn't PNG, JPG or GIF." };
