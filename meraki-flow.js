@@ -4,8 +4,9 @@ import { cornersFor } from './src/geo.js';
 import { REGIONS } from './src/meraki-regions.js';
 import {
   ACTION_LABELS, GENERIC, NO_ORGANISATIONS, NO_WIRELESS, SERVER_STOPPED, buildingReferenceIndex, effectivePlacements,
-  finishedCard, floorRows, uploadButton,
+  apResultLabel, apSummary, finishedCard, floorRows, uploadButton,
 } from './src/meraki-messages.js';
+import { runApPhase } from './src/ap-phase.js';
 import { placeFloor } from './map-place.js';
 
 const STEPS = ['Connect', 'Network', 'Floors'];
@@ -110,6 +111,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
   let networks = [];
   let network = null;
   let plans = [];
+  // Floors that went up in an earlier run of this flow, so a retry leaves their APs out of the results.
+  const uploadedEarlier = new Set();
 
   // Each step change or request takes a ticket, so a late reply can't draw over something newer.
   let latest = 0;
@@ -378,14 +381,14 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     const { center, rotation } = placement;
     const { topLeft, topRight } = cornersFor({ center, widthM: floor.widthM, lengthM: floor.lengthM, rotation });
     try {
-      const { action } = await api('api/floor-plans/upload', {
+      const { action, floorPlanId } = await api('api/floor-plans/upload', {
         networkId: network.id,
         name: merakiName,
         imageContents: floor.image.bytes.toBase64(),
         topLeftCorner: topLeft,
         topRightCorner: topRight,
       });
-      return { index, outcome: action, label: UPLOAD_LABELS[action] };
+      return { index, outcome: action, label: UPLOAD_LABELS[action], floorPlanId };
     } catch (failure) {
       return { index, outcome: 'failed', label: `Failed: ${failure.message}` };
     }
@@ -401,7 +404,8 @@ export function startMerakiFlow({ container, openintent, onExit }) {
     const tags = chosen.map(() => el('span', { className: 'tag', textContent: 'Waiting' }));
     const list = el('ul', { className: 'floor-list' }, ...chosen.map(({ merakiName }, i) =>
       el('li', { className: 'floor-row' }, el('span', { className: 'floor-name' }, mono(merakiName)), tags[i])));
-    showStep(heading('Uploading to ', mono(network.name)), progress, list);
+    const apProgress = detail('');
+    showStep(heading('Uploading to ', mono(network.name)), progress, list, apProgress);
 
     const results = [];
     for (const [i, upload] of chosen.entries()) {
@@ -416,10 +420,44 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       announce(`${merakiName}: ${result.label}`);
       results.push(result);
     }
-    finishedStep(results, list);
+
+    const uploaded = new Map(results.flatMap(({ index, outcome, floorPlanId }) => (outcome === 'failed'
+      ? []
+      : [[index, { floorPlanId, placement: placed.get(index) }]])));
+    let apOutcome = { results: [], listError: null };
+    if (openintent.designAps.length > 0) {
+      apOutcome = await runApPhase({
+        designAps: openintent.designAps,
+        floors,
+        uploaded,
+        earlier: uploadedEarlier,
+        listAccessPoints: () => api('api/access-points', { organizationId, networkId: network.id }),
+        placeAccessPoint: (body) => api('api/access-points/place', body),
+        onProgress: (done, total) => {
+          const text = `Placing access points: ${done} of ${total}`;
+          apProgress.textContent = text;
+          // Announced at the start and the end only, not for every AP.
+          if (done === 0 || done === total) announce(text);
+        },
+      });
+    }
+    for (const index of uploaded.keys()) uploadedEarlier.add(index);
+    finishedStep(results, list, apOutcome);
   }
 
-  function finishedStep(results, list) {
+  function apResultsList(apResults) {
+    const rows = apResults.map((result) => {
+      const good = result.outcome === 'placed' || result.outcome === 'moved' || result.outcome === 'in-place';
+      const tag = el('span', { className: good ? 'tag tag-placed' : 'tag', textContent: apResultLabel(result) });
+      if (result.outcome === 'failed') tag.classList.add('tag-failed');
+      return el('li', { className: 'floor-row' }, el('span', { className: 'floor-name' }, mono(result.name)), tag);
+    });
+    return el('details', { className: 'ap-results' },
+      el('summary', { textContent: 'Access point results' }),
+      el('ul', { className: 'floor-list' }, ...rows));
+  }
+
+  function finishedStep(results, list, { results: apResults, listError }) {
     const { title, detail: counts } = finishedCard({ networkName: network.name, results });
     const failed = results.some(({ outcome }) => outcome === 'failed');
     const dashboard = isHttps(network.url)
@@ -442,11 +480,15 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       }
     });
     const error = errorLine('meraki-finished-error', backToFloors);
+    const apLine = apSummary(apResults);
 
     showStep(
       doneGlyph(),
       heading(title),
       detail(counts),
+      ...(apLine === null ? [] : [detail(apLine)]),
+      ...(listError ? [detail(listError)] : []),
+      ...(apResults.length > 0 ? [apResultsList(apResults)] : []),
       ...(failed ? [list] : []),
       actions(
         ...dashboard,
@@ -456,7 +498,7 @@ export function startMerakiFlow({ container, openintent, onExit }) {
       ),
       error,
     );
-    announce(`${title}. ${counts}`);
+    announce(apLine === null ? `${title}. ${counts}` : `${title}. ${counts} ${apLine}`);
   }
 
   connectStep();

@@ -613,6 +613,33 @@ main {
   overflow-wrap: anywhere;
 }
 
+.ap-results {
+  width: 100%;
+  margin-top: 18px;
+  text-align: left;
+}
+
+.ap-results summary {
+  padding: 6px 2px;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.ap-results summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Result labels can be long, so they wrap rather than push the page sideways. */
+.ap-results .tag {
+  flex: 1 1 14ch;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .pill-primary[aria-disabled="true"] {
   opacity: 0.4;
   box-shadow: none;
