@@ -91,3 +91,36 @@ export function uploadButton(rows, { together = false } = {}) {
   const hint = hintFor(ticked, together);
   return { enabled: hint === null, label: `Upload ${ticked.length} ${ticked.length === 1 ? 'floor' : 'floors'}`, hint };
 }
+
+function placedLabel(verb, { by, merakiName }) {
+  return by === 'bssid' ? `${verb} (by BSSID) as ${merakiName}` : `${verb} (by name)`;
+}
+
+export function apResultLabel(result) {
+  switch (result.outcome) {
+    case 'placed': return placedLabel('Placed', result);
+    case 'moved': return placedLabel('Moved', result);
+    case 'in-place': return 'Already in place';
+    case 'unmatched': return `Not matched: ${result.reason}`;
+    case 'skipped': return `Skipped: ${result.reason}`;
+    case 'failed': return `Failed: ${result.reason}`;
+    default: throw new Error(`Unknown AP outcome: ${result.outcome}`);
+  }
+}
+
+const SUMMARY_PARTS = [
+  ['placed', 'placed'], ['moved', 'moved'], ['in-place', 'already in place'],
+  ['unmatched', 'not matched'], ['skipped', 'skipped'], ['failed', 'failed'],
+];
+
+export function apSummary(results) {
+  const parts = SUMMARY_PARTS
+    .map(([outcome, words]) => [results.filter((result) => result.outcome === outcome).length, words])
+    .filter(([count]) => count > 0)
+    .map(([count, words], i) => `${count}${i === 0 ? ` ${count === 1 ? 'access point' : 'access points'}` : ''} ${words}`);
+  return parts.length === 0 ? null : `${parts.join(', ')}.`;
+}
+
+export function apListError(message) {
+  return `Couldn't list the network's access points: ${message.replace(/\.$/, '')}.`;
+}

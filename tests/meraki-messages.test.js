@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   floorRows, uploadButton, finishedCard, suggestMerakiName, merakiNameProblem, effectivePlacements, buildingReferenceIndex,
+  apResultLabel, apSummary, apListError,
 } from '../src/meraki-messages.js';
 
 const floor = (name, problem = null) => ({ name, widthM: 10, lengthM: 20, image: null, problem });
@@ -252,4 +253,38 @@ test('with the floors placed together, ticking and names are asked for before th
   assert.equal(uploadButton([row(false, null)], together).hint, 'Tick at least one floor.');
   assert.equal(uploadButton([row(true, 'Enter a name.')], together).hint, 'Fix the floor names first.');
   assert.equal(uploadButton([row(true, null)], together).hint, 'Place the building on the map first.');
+});
+
+test('AP result labels', () => {
+  const label = (result) => apResultLabel({ name: 'AP-1', ...result });
+  assert.equal(label({ outcome: 'placed', by: 'name', merakiName: 'X' }), 'Placed (by name)');
+  assert.equal(label({ outcome: 'placed', by: 'bssid', merakiName: 'Lobby' }), 'Placed (by BSSID) as Lobby');
+  assert.equal(label({ outcome: 'moved', by: 'name', merakiName: 'X' }), 'Moved (by name)');
+  assert.equal(label({ outcome: 'moved', by: 'bssid', merakiName: 'Lobby' }), 'Moved (by BSSID) as Lobby');
+  assert.equal(label({ outcome: 'in-place' }), 'Already in place');
+  assert.equal(label({ outcome: 'unmatched', reason: 'No such AP.' }), 'Not matched: No such AP.');
+  assert.equal(label({ outcome: 'skipped', reason: 'No floor.' }), 'Skipped: No floor.');
+  assert.equal(label({ outcome: 'failed', reason: 'Boom.' }), 'Failed: Boom.');
+});
+
+const apResults = (...outcomes) => outcomes.map((outcome, i) => ({ name: `AP-${i}`, outcome }));
+
+test('the AP summary counts each outcome and leaves out zeros', () => {
+  assert.equal(apSummary(apResults('placed', 'placed', 'placed', 'moved', 'unmatched', 'unmatched')),
+    '3 access points placed, 1 moved, 2 not matched.');
+});
+
+test('the AP summary uses the singular for one', () => {
+  assert.equal(apSummary(apResults('in-place')), '1 access point already in place.');
+  assert.equal(apSummary(apResults('skipped', 'failed', 'failed')), '1 access point skipped, 2 failed.');
+});
+
+test('no APs, no summary', () => {
+  assert.equal(apSummary([]), null);
+});
+
+test('a listing error never ends in two full stops', () => {
+  assert.equal(apListError('Something went wrong talking to Meraki.'),
+    "Couldn't list the network's access points: Something went wrong talking to Meraki.");
+  assert.equal(apListError('Timed out'), "Couldn't list the network's access points: Timed out.");
 });
