@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  floorRows, uploadButton, finishedCard, suggestMerakiName, merakiNameProblem,
+  floorRows, uploadButton, finishedCard, suggestMerakiName, merakiNameProblem, effectivePlacements,
 } from '../src/meraki-messages.js';
 
 const floor = (name, problem = null) => ({ name, widthM: 10, lengthM: 20, image: null, problem });
@@ -186,4 +186,14 @@ test('a Meraki name with a disallowed character lists the allowed ones', () => {
   assert.equal(merakiNameProblem('Level 1 (East)'), 'Use only letters, numbers, spaces, - and _.');
   assert.equal(merakiNameProblem('Étage 2 – Est'), 'Use only letters, numbers, spaces, - and _.');
   assert.equal(merakiNameProblem('Étage_2 - Est 東'), null);
+});
+
+const spot = { center: { lat: 1, lng: 2 }, rotation: 30 };
+
+test('with the floors placed together, every floor uses the building placement', () => {
+  const floors = [floor('Ground'), floor('First'), floor('Second')];
+  const placements = effectivePlacements(new Map(), { together: true, placement: spot, count: floors.length });
+  const rows = floorRows(floors, [], placements, new Set());
+  assert.deepEqual(rows.map((row) => row.placed), [true, true, true]);
+  assert.equal(placements.get(2), spot);
 });

@@ -43,6 +43,11 @@ export function floorRows(floors, existingPlans, placements, unticked, names = n
     rowFor(floor, i, chosen[i], chosen.indexOf(chosen[i]) < i, existingPlans, placements, unticked));
 }
 
+// With the floors placed together as one building, every floor shares the building's placement.
+export function effectivePlacements(placements, building) {
+  return new Map(Array.from({ length: building.count }, (_, i) => [i, building.placement]));
+}
+
 export const ACTION_LABELS = { create: 'Create', update: 'Update existing', blocked: "Can't upload" };
 
 export const NO_ORGANISATIONS = "This API key doesn't have access to any organisations.";
