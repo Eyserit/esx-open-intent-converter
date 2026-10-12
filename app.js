@@ -40,11 +40,15 @@ const libraryReady = fetch('src/antenna-library.json').then((response) => {
 libraryReady.catch(() => {});
 
 // Only the local server answers this; on GitHub Pages it 404s (the path is relative), so Send to Meraki stays hidden.
+// The flow's messages load with it, so the one for a failed load is fetched here, while the server is known to be up.
 let merakiAvailable = false;
+let merakiMessages = null;
 fetch('api/health')
   .then((response) => (response.ok ? response.json() : null))
-  .then((health) => {
-    merakiAvailable = health?.ok === true;
+  .then(async (health) => {
+    if (health?.ok !== true) return;
+    merakiMessages = await import('./src/meraki-messages.js');
+    merakiAvailable = true;
   })
   .catch(() => {});
 
@@ -209,8 +213,19 @@ function closeMeraki() {
 }
 
 buttons.meraki.addEventListener('click', async () => {
-  const { startMerakiFlow } = await import('./meraki-flow.js');
+  if (openintent === null || merakiOpen) return;
+  // Set before the import so a second click while it loads can't start a second flow.
   merakiOpen = true;
+  let startMerakiFlow;
+  try {
+    ({ startMerakiFlow } = await import('./meraki-flow.js'));
+  } catch {
+    merakiOpen = false;
+    detail.textContent = merakiMessages.SERVER_STOPPED;
+    detail.hidden = false;
+    status.textContent = merakiMessages.SERVER_STOPPED;
+    return;
+  }
   card.dataset.state = 'meraki';
   merakiPanel.hidden = false;
   startMerakiFlow({ container: merakiPanel, openintent, onExit: closeMeraki });
