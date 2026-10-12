@@ -79,15 +79,15 @@ export function finishedCard({ networkName, results }) {
   };
 }
 
-function hintFor(ticked) {
+function hintFor(ticked, together) {
   if (ticked.length === 0) return 'Tick at least one floor.';
   if (ticked.some((row) => row.nameProblem)) return 'Fix the floor names first.';
-  if (!ticked.every((row) => row.placed)) return 'Place every ticked floor on the map first.';
-  return null;
+  if (ticked.every((row) => row.placed)) return null;
+  return together ? 'Place the building on the map first.' : 'Place every ticked floor on the map first.';
 }
 
-export function uploadButton(rows) {
+export function uploadButton(rows, { together = false } = {}) {
   const ticked = rows.filter((row) => row.ticked);
-  const hint = hintFor(ticked);
+  const hint = hintFor(ticked, together);
   return { enabled: hint === null, label: `Upload ${ticked.length} ${ticked.length === 1 ? 'floor' : 'floors'}`, hint };
 }

@@ -238,3 +238,10 @@ test('floors of equal size give the building outline to the first, and with no s
   const unsized = sizedFloors([null, null, noSize], [null, null, noSize]);
   assert.equal(buildingReferenceIndex(unsized, floorRows(unsized, [], new Map(), new Set())), null);
 });
+
+test('with the floors placed together, upload asks for the building to be placed', () => {
+  const row = (ticked, placed, nameProblem = null) => ({ name: 'F', action: 'create', reason: null, placed, ticked, nameProblem });
+  assert.deepEqual(uploadButton([row(true, false), row(true, false)], { together: true }),
+    { enabled: false, label: 'Upload 2 floors', hint: 'Place the building on the map first.' });
+  assert.equal(uploadButton([row(true, false)]).hint, 'Place every ticked floor on the map first.');
+});
