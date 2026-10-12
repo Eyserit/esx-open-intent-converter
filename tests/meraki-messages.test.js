@@ -24,6 +24,17 @@ test('a floor without a chosen name uses the suggestion, and a chosen name is ch
   assert.equal(chosen.nameProblem, 'Use only letters, numbers, spaces, - and _.');
 });
 
+test('renaming a floor to an existing plan updates it, and renaming it back creates', () => {
+  const plans = [{ id: '1', name: 'Lobby' }];
+  const rowNamed = (name) => floorRows([floor('Ground')], plans, placed('Ground'), new Set(), new Map([['Ground', name]]))[0];
+  assert.equal(rowNamed('Ground').action, 'create');
+  assert.equal(rowNamed('Lobby').action, 'update');
+  assert.equal(rowNamed('Ground').action, 'create');
+  const duplicates = [{ id: '1', name: 'Lobby' }, { id: '2', name: 'Lobby' }];
+  const [blocked] = floorRows([floor('Ground')], duplicates, placed('Ground'), new Set(), new Map([['Ground', 'Lobby']]));
+  assert.equal(blocked.reason, '2 floor plans named “Lobby” in this network: rename one in Dashboard.');
+});
+
 test('an existing plan with the same name updates', () => {
   const [row] = floorRows([floor('Ground')], [{ id: '1', name: 'Ground' }], placed('Ground'), new Set());
   assert.equal(row.action, 'update');

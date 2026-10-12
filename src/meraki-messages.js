@@ -29,8 +29,8 @@ function rowFor(floor, merakiName, isRepeat, existingPlans, placements, unticked
   if (floor.problem) return blocked(floor.problem);
   // Two floors with one name would both target the same Meraki plan.
   if (isRepeat) return blocked(`Two floors in this design are named “${floor.name}”.`);
-  const match = matchFloorPlan(floor.name, existingPlans);
-  if (match.action === 'blocked') return blocked(duplicatePlansMessage(floor.name, match.count));
+  const match = matchFloorPlan(merakiName, existingPlans);
+  if (match.action === 'blocked') return blocked(duplicatePlansMessage(merakiName, match.count));
   return { ...base, action: match.action, reason: null, ticked: !unticked.has(floor.name) };
 }
 
